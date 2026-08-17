@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#85a5d6">
+<title>摊主管理后台</title>
+<style>
+:root{
+  --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
+  --brand:#85a5d6;--brand-dark:#607fae;--brand-soft:#edf3fa;--green:#16a34a;
+  --red:#dc2626;--shadow:0 10px 28px rgba(66,94,135,.10)
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.topbar{position:sticky;top:0;z-index:30;background:rgba(246,248,252,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar-inner{width:min(1080px,100%);margin:auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:850;font-size:20px}
+.brand-dot{width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,var(--brand),#b9cbe5);display:grid;place-items:center;color:#fff}
+.container{width:min(1080px,100%);margin:auto;padding:18px 16px 96px}
+.hero{background:linear-gradient(135deg,#eaf1fa,#f4f7fb 60%,#fff);border:1px solid #d5e1f0;border-radius:24px;padding:22px;margin-bottom:18px;box-shadow:var(--shadow)}
+.hero h1{margin:0 0 7px;font-size:28px}.hero p{margin:0;color:var(--muted);line-height:1.7}
+.filters{display:flex;gap:8px;overflow-x:auto;padding:4px 0 14px;scrollbar-width:none}.filters::-webkit-scrollbar{display:none}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 13px;white-space:nowrap;font-size:13px;font-weight:700}
+.chip.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.product-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.product{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.product-img{aspect-ratio:1/1;width:100%;object-fit:cover;display:block;background:var(--brand-soft)}
+.placeholder{aspect-ratio:1/1;display:grid;place-items:center;background:linear-gradient(135deg,#eaf1fa,#dbe7f5);font-size:46px}
+.product-body{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.author{display:inline-flex;align-self:flex-start;background:#f3f4f6;color:#4b5563;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:750}
+.product-title{font-weight:850;line-height:1.35}.product-desc{font-size:12px;color:var(--muted);line-height:1.45;min-height:34px}
+.product-foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;gap:8px}
+.price{font-size:19px;font-weight:900;color:var(--brand-dark)}
+.add-btn{width:36px;height:36px;border:0;border-radius:12px;background:var(--brand);color:#fff;font-size:22px;font-weight:700}
+.btn{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:12px;padding:9px 13px;font-weight:700}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn.small{padding:7px 10px;font-size:13px}.btn.danger{color:var(--red)}
+.cart-fab{position:fixed;right:18px;bottom:20px;z-index:40;border:0;background:var(--text);color:#fff;border-radius:18px;padding:13px 17px;display:flex;align-items:center;gap:9px;font-weight:800;box-shadow:0 14px 34px rgba(0,0,0,.2)}
+.badge{min-width:22px;height:22px;border-radius:999px;background:var(--brand);display:grid;place-items:center;font-size:12px;padding:0 6px}
+.overlay{position:fixed;inset:0;background:rgba(17,24,39,.42);z-index:50;display:none;align-items:flex-end;justify-content:center}.overlay.show{display:flex}
+.sheet{background:#fff;width:min(680px,100%);max-height:90vh;overflow:auto;border-radius:24px 24px 0 0;padding:18px 16px 24px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}.sheet-head h2,.sheet-head h3{margin:0}
+.close{border:0;background:#f3f4f6;width:34px;height:34px;border-radius:10px;font-size:18px}
+.cart-item{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid #eee}.cart-thumb{width:58px;height:58px;border-radius:12px;object-fit:cover;background:var(--brand-soft)}
+.cart-main{flex:1;min-width:0}.cart-title{font-weight:800}.cart-meta{font-size:12px;color:var(--muted);margin-top:3px}.cart-side{text-align:right}
+.qty{display:flex;align-items:center;gap:8px;margin-top:7px}.qty button{border:1px solid var(--line);background:#fff;border-radius:8px;width:28px;height:28px}
+.total-line{display:flex;justify-content:space-between;align-items:center;padding:15px 0 10px;font-size:16px}.total-line strong{font-size:24px;color:var(--brand-dark)}
+.checkout-btn{width:100%;border:0;background:var(--brand);color:#fff;border-radius:14px;padding:13px;font-weight:850;font-size:16px}
+.qr-box{text-align:center;padding:8px 0 4px}.qr-box img{width:min(280px,75vw);border-radius:18px;border:1px solid var(--line);background:#fff}
+.qr-placeholder{width:min(280px,75vw);aspect-ratio:1;margin:auto;border:2px dashed var(--line);border-radius:18px;display:grid;place-items:center;color:var(--muted);padding:24px}
+.order-summary{background:#f9fafb;border-radius:14px;padding:12px;margin:12px 0;font-size:13px;line-height:1.7}
+.success{background:#ecfdf5;color:#166534;border-radius:14px;padding:12px;margin:12px 0;display:none}
+.notice{font-size:12px;color:var(--muted);line-height:1.6;background:#f9fafb;padding:10px;border-radius:11px;margin-top:10px}
+.errorbox{background:#fef2f2;color:#991b1b;border-radius:12px;padding:11px 12px;margin:10px 0;display:none;font-size:13px}
+.loading,.empty{padding:42px 10px;text-align:center;color:var(--muted)}
+.field{margin-bottom:12px}.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px 2px;font-weight:700}
+.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 11px;background:#fff;outline:none}
+.field textarea{min-height:76px;resize:vertical}
+.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.stat{background:#f9fafb;border-radius:13px;padding:12px}.stat span{font-size:11px;color:var(--muted)}.stat b{display:block;font-size:20px;margin-top:4px}
+.admin-shell{width:min(1080px,100%);margin:auto;padding:18px 16px 60px}.admin-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.admin-grid{display:grid;grid-template-columns:340px 1fr;gap:16px}.tabs{display:flex;gap:8px;margin-bottom:14px}.tab{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 11px;font-weight:700}.tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
+.preview{width:100%;aspect-ratio:16/10;border:1px dashed var(--line);border-radius:14px;object-fit:cover;background:var(--brand-soft);display:none;margin-top:8px}
+.admin-list{display:flex;flex-direction:column;gap:10px}.admin-product{display:grid;grid-template-columns:68px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:10px}
+.admin-product img,.mini-ph{width:68px;height:68px;border-radius:11px;object-fit:cover;background:var(--brand-soft)}.mini-ph{display:grid;place-items:center;font-size:28px}
+.admin-product .name{font-weight:800}.admin-product .meta{font-size:12px;color:var(--muted);margin-top:4px}.admin-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.order-row{border-bottom:1px solid #eee;padding:12px 0}.order-row:last-child{border-bottom:0}.order-top{display:flex;justify-content:space-between;gap:12px}.order-id{font-weight:800}.order-time{color:var(--muted);font-size:12px}.order-items{font-size:12px;color:#4b5563;margin-top:5px;line-height:1.6}
+.author-stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;font-size:13px}.author-stat:last-child{border-bottom:0}
+.hidden{display:none!important}
+.login-card{width:min(440px,calc(100% - 28px));margin:11vh auto 0;background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--shadow)}
+.login-card h1{margin:0 0 7px;font-size:24px}.login-card p{color:var(--muted);font-size:13px;line-height:1.65}
+@media(max-width:820px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}}
+@media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="pinGate" class="login-card">
+  <div class="brand" style="margin-bottom:14px"><div class="brand-dot">店</div><span>摊主管理后台</span></div>
+  <h1>输入管理 PIN</h1>
+  <p>这是后台入口的第一层保护。数据库修改权限还会由 Supabase 登录验证。</p>
+  <div class="field"><label>管理 PIN</label><input id="pinInput" type="password" inputmode="numeric" maxlength="8" placeholder="请输入 PIN" onkeydown="if(event.key==='Enter')checkPin()"></div>
+  <div id="pinErr" class="errorbox"></div>
+  <button class="checkout-btn" onclick="checkPin()">继续</button>
+</div>
+
+<div id="authGate" class="login-card hidden">
+  <div class="brand" style="margin-bottom:14px"><div class="brand-dot">云</div><span>云端管理员登录</span></div>
+  <h1>登录 Supabase 管理员</h1>
+  <p>第一次使用前，请先在 Supabase → Authentication → Users 创建一个管理员用户。当前数据库权限预设给 <b>ycyaaa@yeah.net</b>。</p>
+  <div class="field"><label>邮箱</label><input id="loginEmail" type="email" value="ycyaaa@yeah.net"></div>
+  <div class="field"><label>密码</label><input id="loginPassword" type="password" placeholder="Supabase Auth 密码" onkeydown="if(event.key==='Enter')loginAdmin()"></div>
+  <div id="authErr" class="errorbox"></div>
+  <button class="checkout-btn" onclick="loginAdmin()">登录后台</button>
+</div>
+
+<div id="adminApp" class="hidden">
+  <div class="admin-shell">
+    <div class="admin-head">
+      <div><div style="font-size:23px;font-weight:900">摊主管理后台</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Supabase 云同步版</div></div>
+      <button class="btn" onclick="logoutAdmin()">退出登录</button>
+    </div>
+
+    <div id="adminError" class="errorbox"></div>
+
+    <div class="admin-grid">
+      <aside class="panel">
+        <div class="tabs">
+          <button class="tab active" id="tabProduct" onclick="switchTab('product')">商品</button>
+          <button class="tab" id="tabShop" onclick="switchTab('shop')">店铺</button>
+        </div>
+
+        <div id="productForm">
+          <h3 id="formTitle">新增商品</h3>
+          <input type="hidden" id="editId">
+          <input type="hidden" id="oldImagePath">
+          <div class="field"><label>商品名称</label><input id="pName" placeholder="例如：手作钥匙扣"></div>
+          <div class="field"><label>作者 / 标签</label><input id="pAuthor" placeholder="例如：Jade / 小陈"></div>
+          <div class="field"><label>价格（元）</label><input id="pPrice" type="number" min="0" step="0.01" inputmode="decimal"></div>
+          <div class="field"><label>简介</label><textarea id="pDesc"></textarea></div>
+          <div class="field"><label>商品图片</label><input id="pImage" type="file" accept="image/*" onchange="previewProduct(event)"><img id="pPreview" class="preview"></div>
+          <div class="field"><label><input id="pActive" type="checkbox" checked style="width:auto;margin-right:6px">顾客端显示该商品</label></div>
+          <button class="btn primary" style="width:100%" onclick="saveProduct()">保存商品</button>
+          <button id="cancelEdit" class="btn hidden" style="width:100%;margin-top:8px" onclick="resetProductForm()">取消编辑</button>
+        </div>
+
+        <div id="shopForm" class="hidden">
+          <h3>店铺设置</h3>
+          <input type="hidden" id="oldQrPath">
+          <div class="field"><label>店铺名称</label><input id="sName"></div>
+          <div class="field"><label>店铺介绍</label><textarea id="sSlogan"></textarea></div>
+          <div class="field"><label>支付提示</label><input id="sPaymentCaption"></div>
+          <div class="field"><label>收款二维码</label><input id="sQR" type="file" accept="image/*" onchange="previewQR(event)"><img id="qrPreview" class="preview"></div>
+          <button class="btn primary" style="width:100%" onclick="saveSettings()">保存店铺设置</button>
+        </div>
+      </aside>
+
+      <section>
+        <div class="panel" style="margin-bottom:16px">
+          <h3 style="margin-top:0">今日营业</h3>
+          <div class="stats">
+            <div class="stat"><span>订单数</span><b id="statOrders">0</b></div>
+            <div class="stat"><span>营业额</span><b id="statRevenue">¥0.00</b></div>
+            <div class="stat"><span>售出件数</span><b id="statItems">0</b></div>
+          </div>
+          <div id="authorStats"></div>
+        </div>
+
+        <div class="panel" style="margin-bottom:16px">
+          <div class="sheet-head"><h3>商品管理</h3><span id="productCount" style="font-size:12px;color:var(--muted)"></span></div>
+          <div id="adminProducts" class="admin-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="sheet-head"><h3>最近订单</h3><button class="btn small" onclick="exportOrders()">导出 CSV</button></div>
+          <div id="ordersList"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://okgnpgamahaucmvyquzx.supabase.co";
+const SUPABASE_KEY="sb_publishable_guo63tjKVNsIplXZ5bdGuQ_Z6FdzACy";
+const FIXED_PIN='30102';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let products=[],orders=[],settings={},pendingProductFile=null,pendingQrFile=null;
+
+function money(n){return '¥'+Number(n||0).toFixed(2)}
+function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
+function authorEmoji(name){const a=['🎨','🧵','🌿','✨','🧸','🍀','🌙','🪄'];let s=0;for(const c of String(name))s+=c.charCodeAt(0);return a[s%a.length]}
+function showAdminError(msg){const e=document.getElementById('adminError');e.textContent=msg||'';e.style.display=msg?'block':'none'}
+function showAuthError(msg){const e=document.getElementById('authErr');e.textContent=msg||'';e.style.display=msg?'block':'none'}
+
+async function checkPin(){
+  const pin=document.getElementById('pinInput').value.trim();
+  if(pin!==FIXED_PIN){const e=document.getElementById('pinErr');e.textContent='PIN 不正确';e.style.display='block';return}
+  document.getElementById('pinGate').classList.add('hidden');
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){await enterIfAdmin();}else document.getElementById('authGate').classList.remove('hidden');
+}
+
+async function loginAdmin(){
+  showAuthError('');
+  const email=document.getElementById('loginEmail').value.trim();
+  const password=document.getElementById('loginPassword').value;
+  const b=event?.target;b && (b.disabled=true);
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(b)b.disabled=false;
+  if(error){showAuthError('登录失败：'+error.message);return}
+  await enterIfAdmin();
+}
+
+async function enterIfAdmin(){
+  const {data,error}=await sb.rpc('is_shop_admin');
+  if(error||data!==true){
+    showAuthError('这个 Supabase 用户没有摊主管理权限。');
+    await sb.auth.signOut();
+    document.getElementById('authGate').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('authGate').classList.add('hidden');
+  document.getElementById('adminApp').classList.remove('hidden');
+  await loadAdminData();
+}
+
+async function logoutAdmin(){
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function loadAdminData(){
+  showAdminError('');
+  const [p,s,o]=await Promise.all([
+    sb.from('products').select('*').order('created_at',{ascending:false}),
+    sb.from('shop_settings').select('*').eq('id',1).single(),
+    sb.from('orders').select('id,total,status,created_at,order_items(id,product_name,author,unit_price,quantity,line_total)').order('created_at',{ascending:false}).limit(100)
+  ]);
+  if(p.error||s.error||o.error){showAdminError([p.error?.message,s.error?.message,o.error?.message].filter(Boolean).join(' / '));return}
+  products=p.data||[];settings=s.data||{};orders=o.data||[];
+  renderProducts();renderOrders();renderStats();loadSettingsForm();
+}
+
+function switchTab(t){
+  const prod=t==='product';
+  document.getElementById('productForm').classList.toggle('hidden',!prod);
+  document.getElementById('shopForm').classList.toggle('hidden',prod);
+  document.getElementById('tabProduct').classList.toggle('active',prod);
+  document.getElementById('tabShop').classList.toggle('active',!prod);
+}
+function renderProducts(){
+  document.getElementById('productCount').textContent=`共 ${products.length} 件`;
+  const el=document.getElementById('adminProducts');
+  if(!products.length){el.innerHTML='<div class="empty">还没有商品</div>';return}
+  el.innerHTML=products.map(p=>`
+    <div class="admin-product">
+      ${p.image_url?`<img src="${esc(p.image_url)}">`:`<div class="mini-ph">${authorEmoji(p.author)}</div>`}
+      <div><div class="name">${esc(p.name)} ${p.is_active?'':'<span style="color:#9ca3af;font-size:11px">（已隐藏）</span>'}</div><div class="meta">${esc(p.author)} · ${money(p.price)}</div></div>
+      <div class="admin-actions"><button class="btn small" onclick="editProduct('${p.id}')">编辑</button><button class="btn small danger" onclick="deleteProduct('${p.id}')">删除</button></div>
+    </div>`).join('');
+}
+
+function editProduct(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  editId.value=p.id;pName.value=p.name;pAuthor.value=p.author;pPrice.value=p.price;pDesc.value=p.description||'';pActive.checked=!!p.is_active;oldImagePath.value=p.image_path||'';
+  if(p.image_url){pPreview.src=p.image_url;pPreview.style.display='block'}else pPreview.style.display='none';
+  pendingProductFile=null;formTitle.textContent='编辑商品';cancelEdit.classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});
+}
+function resetProductForm(){
+  editId.value='';pName.value='';pAuthor.value='';pPrice.value='';pDesc.value='';pActive.checked=true;oldImagePath.value='';pImage.value='';pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='新增商品';cancelEdit.classList.add('hidden');
+}
+function previewProduct(e){const f=e.target.files?.[0];if(!f)return;pendingProductFile=f;pPreview.src=URL.createObjectURL(f);pPreview.style.display='block'}
+function previewQR(e){const f=e.target.files?.[0];if(!f)return;pendingQrFile=f;qrPreview.src=URL.createObjectURL(f);qrPreview.style.display='block'}
+
+function safeExt(file){const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');return ext||'jpg'}
+async function uploadAsset(file,pathBase){
+  const path=`${pathBase}-${Date.now()}.${safeExt(file)}`;
+  const {error}=await sb.storage.from('shop-assets').upload(path,file,{cacheControl:'3600',upsert:false});
+  if(error)throw error;
+  const {data}=sb.storage.from('shop-assets').getPublicUrl(path);
+  return {path,url:data.publicUrl};
+}
+async function removeAsset(path){if(path)await sb.storage.from('shop-assets').remove([path])}
+
+async function saveProduct(){
+  showAdminError('');
+  const id=editId.value||crypto.randomUUID(),name=pName.value.trim(),author=pAuthor.value.trim(),price=Number(pPrice.value),description=pDesc.value.trim(),is_active=pActive.checked;
+  if(!name||!author||!(price>=0)){showAdminError('请填写商品名称、作者和正确价格。');return}
+  let image_path=oldImagePath.value||null,image_url=products.find(x=>x.id===editId.value)?.image_url||null;
+  try{
+    if(pendingProductFile){
+      const up=await uploadAsset(pendingProductFile,`products/${id}`);
+      if(image_path)await removeAsset(image_path);
+      image_path=up.path;image_url=up.url;
+    }
+    const payload={id,name,author,price:Number(price.toFixed(2)),description,image_path,image_url,is_active,updated_at:new Date().toISOString()};
+    const {error}=await sb.from('products').upsert(payload);
+    if(error)throw error;
+    resetProductForm();await loadAdminData();
+  }catch(e){showAdminError('保存商品失败：'+e.message)}
+}
+
+async function deleteProduct(id){
+  const p=products.find(x=>x.id===id);if(!confirm(`确定删除“${p?.name||'这个商品'}”吗？`))return;
+  try{
+    const {error}=await sb.from('products').delete().eq('id',id);if(error)throw error;
+    if(p?.image_path)await removeAsset(p.image_path);
+    await loadAdminData();
+  }catch(e){showAdminError('删除失败：'+e.message)}
+}
+
+function loadSettingsForm(){
+  sName.value=settings.name||'';sSlogan.value=settings.slogan||'';sPaymentCaption.value=settings.payment_caption||'';oldQrPath.value=settings.qr_path||'';
+  if(settings.qr_url){qrPreview.src=settings.qr_url;qrPreview.style.display='block'}else qrPreview.style.display='none';
+  pendingQrFile=null;
+}
+async function saveSettings(){
+  try{
+    let qr_path=settings.qr_path||null,qr_url=settings.qr_url||null;
+    if(pendingQrFile){
+      const up=await uploadAsset(pendingQrFile,'settings/payment-qr');
+      if(qr_path)await removeAsset(qr_path);
+      qr_path=up.path;qr_url=up.url;
+    }
+    const payload={id:1,name:sName.value.trim()||'摊位小店',slogan:sSlogan.value.trim(),payment_caption:sPaymentCaption.value.trim()||'请扫码付款',qr_path,qr_url,updated_at:new Date().toISOString()};
+    const {error}=await sb.from('shop_settings').upsert(payload);if(error)throw error;
+    alert('店铺设置已同步到云端');await loadAdminData();
+  }catch(e){showAdminError('保存店铺设置失败：'+e.message)}
+}
+
+function renderOrders(){
+  const el=document.getElementById('ordersList');
+  if(!orders.length){el.innerHTML='<div class="empty">暂无订单</div>';return}
+  el.innerHTML=orders.map(o=>`
+    <div class="order-row"><div class="order-top"><div class="order-id">${esc(o.id.slice(0,8))} · ${money(o.total)}</div><div class="order-time">${new Date(o.created_at).toLocaleString('zh-CN',{hour12:false})}</div></div>
+    <div class="order-items">${(o.order_items||[]).map(x=>`${esc(x.product_name)}（${esc(x.author)}）×${x.quantity}`).join('，')}</div></div>`).join('');
+}
+function renderStats(){
+  const today=new Date(),sameDay=d=>{const x=new Date(d);return x.getFullYear()===today.getFullYear()&&x.getMonth()===today.getMonth()&&x.getDate()===today.getDate()};
+  const list=orders.filter(o=>sameDay(o.created_at));let revenue=0,count=0;const authors={};
+  list.forEach(o=>{revenue+=Number(o.total);(o.order_items||[]).forEach(i=>{count+=i.quantity;const a=i.author||'未标作者';authors[a]=(authors[a]||0)+Number(i.line_total)})});
+  statOrders.textContent=list.length;statRevenue.textContent=money(revenue);statItems.textContent=count;
+  authorStats.innerHTML=Object.entries(authors).sort((a,b)=>b[1]-a[1]).map(([a,v])=>`<div class="author-stat"><span>${esc(a)}</span><b>${money(v)}</b></div>`).join('');
+}
+function exportOrders(){
+  if(!orders.length){alert('暂无订单');return}
+  const rows=[['订单号','时间','商品','作者','单价','数量','小计']];
+  orders.forEach(o=>(o.order_items||[]).forEach(i=>rows.push([o.id,new Date(o.created_at).toLocaleString('zh-CN',{hour12:false}),i.product_name,i.author,i.unit_price,i.quantity,i.line_total])));
+  const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='摊位订单.csv';a.click();URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
