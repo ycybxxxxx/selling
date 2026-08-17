@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#85a5d6">
-<title>爻组一辈子乐队</title>
+<title>摊位小店 V13</title>
 <style>
 :root{
   --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
@@ -153,7 +153,7 @@ function bundleText(p){
 async function loadCloudData(){
   showError('');
   const [pRes,cRes,sRes]=await Promise.all([
-    sb.from('products').select('id,name,author,tags,max_per_order,stock_qty,price,description,image_url,product_type,is_active,created_at').eq('is_active',true).order('created_at',{ascending:false}),
+    sb.from('products').select('id,name,author,tags,max_per_order,stock_qty,sort_order,price,description,image_url,product_type,is_active,created_at').eq('is_active',true).order('created_at',{ascending:false}),
     sb.from('bundle_components').select('bundle_product_id,component_product_id,quantity'),
     sb.from('shop_settings').select('name,slogan,payment_caption,qr_url,tag_order').eq('id',1).maybeSingle()
   ]);
@@ -210,7 +210,7 @@ function effectiveCartLimit(p){
   return vals.length?Math.min(...vals):null;
 }
 function renderProducts(){
-  let list=products;
+  let list=[...products].sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||new Date(a.created_at)-new Date(b.created_at));
   if(activeAuthor==='组合商品')list=list.filter(p=>p.product_type==='bundle');
   else if(activeAuthor!=='全部')list=list.filter(p=>p.product_type!=='bundle'&&p.author===activeAuthor);
   if(activeTag!=='全部')list=list.filter(p=>(p.tags||[]).includes(activeTag));
