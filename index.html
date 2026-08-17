@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#85a5d6">
-<title>爻组一辈子乐队</title>
+<title>子叶是顶细胞发育的</title>
 <style>
 :root{
   --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
@@ -99,6 +99,23 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .tag-order-actions{display:flex;gap:5px}
 .tag-order-actions button{width:32px;height:30px;border:1px solid var(--line);background:#fff;border-radius:8px;font-weight:800}
 
+
+.search-wrap{position:relative;margin:0 0 14px}
+.search-input{
+  width:100%;border:1px solid var(--line);background:#fff;border-radius:14px;
+  padding:12px 42px 12px 42px;outline:none;box-shadow:var(--shadow);
+  color:var(--text)
+}
+.search-input:focus{border-color:var(--brand)}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:17px;opacity:.65;pointer-events:none}
+.search-clear{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  width:30px;height:30px;border:0;background:#f1f5f9;border-radius:9px;
+  color:#64748b;font-size:17px;display:none
+}
+.search-clear.show{display:block}
+.search-meta{font-size:11px;color:var(--muted);margin:-5px 0 10px 2px}
+
 @media(max-width:900px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 75px 75px 75px}}
 @media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 64px 64px 64px;font-size:11px}}
 </style>
@@ -109,6 +126,17 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 <main class="container">
   <section class="hero"><h1 id="shopNameHero">摊位小店</h1><p id="shopSlogan">正在加载店铺信息…</p></section>
   <div id="loadError" class="errorbox"></div>
+
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input id="productSearch" class="search-input" type="search"
+           placeholder="搜索商品、作者、标签…"
+           autocomplete="off"
+           oninput="setSearch(this.value)">
+    <button id="searchClear" class="search-clear" type="button" onclick="clearSearch()" aria-label="清除搜索">×</button>
+  </div>
+  <div id="searchMeta" class="search-meta"></div>
+
   <div class="filter-group"><div class="filter-label">作者</div><div id="authorFilters" class="filters"></div></div>
   <div class="filter-group"><div class="filter-label">标签</div><div id="tagFilters" class="filters"></div></div>
   <section id="productGrid" class="product-grid"><div class="loading" style="grid-column:1/-1">正在从云端加载商品…</div></section>
@@ -137,7 +165,7 @@ const SUPABASE_URL="https://okgnpgamahaucmvyquzx.supabase.co";
 const SUPABASE_KEY="sb_publishable_guo63tjKVNsIplXZ5bdGuQ_Z6FdzACy";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let products=[],bundleComponents=[],settings={name:'摊位小店',slogan:'欢迎选购喜欢的作品。',payment_caption:'请使用微信/支付宝扫码付款',qr_url:'',tag_order:[]};
-let cart=JSON.parse(localStorage.getItem('stall_cloud_cart')||'{}'),activeAuthor='全部',activeTag='全部',pendingOrder=null;
+let cart=JSON.parse(localStorage.getItem('stall_cloud_cart')||'{}'),activeAuthor='全部',activeTag='全部',searchQuery='',pendingOrder=null;
 function money(n){return '¥'+Number(n||0).toFixed(2)}
 function orderNo(n){return String(n??'')}
 function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
@@ -209,12 +237,51 @@ function effectiveCartLimit(p){
   if(per>0)vals.push(per);
   return vals.length?Math.min(...vals):null;
 }
+function normalizeSearchText(v){
+  return String(v??'').trim().toLocaleLowerCase('zh-CN');
+}
+function productMatchesSearch(p,q){
+  if(!q)return true;
+  const haystack=[
+    p.name,
+    p.author,
+    p.description,
+    ...(Array.isArray(p.tags)?p.tags:[]),
+    p.product_type==='bundle'?'组合商品 套装':'单品'
+  ].map(normalizeSearchText).join(' ');
+  return haystack.includes(q);
+}
+function setSearch(v){
+  searchQuery=normalizeSearchText(v);
+  if(window.searchClear)searchClear.classList.toggle('show',!!searchQuery);
+  renderProducts();
+}
+function clearSearch(){
+  searchQuery='';
+  if(window.productSearch)productSearch.value='';
+  if(window.searchClear)searchClear.classList.remove('show');
+  renderProducts();
+  if(window.productSearch)productSearch.focus();
+}
 function renderProducts(){
   let list=[...products].sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||new Date(a.created_at)-new Date(b.created_at));
   if(activeAuthor==='组合商品')list=list.filter(p=>p.product_type==='bundle');
   else if(activeAuthor!=='全部')list=list.filter(p=>p.product_type!=='bundle'&&p.author===activeAuthor);
   if(activeTag!=='全部')list=list.filter(p=>(p.tags||[]).includes(activeTag));
-  if(!list.length){productGrid.innerHTML='<div class="empty" style="grid-column:1/-1">暂时没有商品</div>';return}
+  if(searchQuery)list=list.filter(p=>productMatchesSearch(p,searchQuery));
+
+  if(window.searchMeta){
+    if(searchQuery){
+      searchMeta.textContent=`找到 ${list.length} 件与“${productSearch.value.trim()}”相关的商品`;
+    }else{
+      searchMeta.textContent='';
+    }
+  }
+
+  if(!list.length){
+    productGrid.innerHTML=`<div class="empty" style="grid-column:1/-1">${searchQuery?'没有找到匹配商品':'暂时没有商品'}</div>`;
+    return;
+  }
   productGrid.innerHTML=list.map(p=>`
     <article class="product">
       ${p.image_url?`<img class="product-img" src="${esc(p.image_url)}" alt="${esc(p.name)}">`:`<div class="placeholder">${p.product_type==='bundle'?'🎁':authorEmoji(p.author)}</div>`}
