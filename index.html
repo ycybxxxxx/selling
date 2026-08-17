@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#85a5d6">
-<title>摊位小店</title>
+<title>爻组一辈子乐队</title>
 <style>
 :root{
   --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
@@ -93,6 +93,12 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:100;background:#1f2937;color:#fff;border-radius:12px;padding:11px 15px;font-size:13px;font-weight:800;box-shadow:0 12px 30px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.2s}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+
+.tag-order-list{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.tag-order-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 9px;background:#fff}
+.tag-order-actions{display:flex;gap:5px}
+.tag-order-actions button{width:32px;height:30px;border:1px solid var(--line);background:#fff;border-radius:8px;font-weight:800}
+
 @media(max-width:900px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 75px 75px 75px}}
 @media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 64px 64px 64px;font-size:11px}}
 </style>
@@ -130,7 +136,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 const SUPABASE_URL="https://okgnpgamahaucmvyquzx.supabase.co";
 const SUPABASE_KEY="sb_publishable_guo63tjKVNsIplXZ5bdGuQ_Z6FdzACy";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let products=[],bundleComponents=[],settings={name:'摊位小店',slogan:'欢迎选购喜欢的作品。',payment_caption:'请使用微信/支付宝扫码付款',qr_url:''};
+let products=[],bundleComponents=[],settings={name:'摊位小店',slogan:'欢迎选购喜欢的作品。',payment_caption:'请使用微信/支付宝扫码付款',qr_url:'',tag_order:[]};
 let cart=JSON.parse(localStorage.getItem('stall_cloud_cart')||'{}'),activeAuthor='全部',activeTag='全部',pendingOrder=null;
 function money(n){return '¥'+Number(n||0).toFixed(2)}
 function orderNo(n){return String(n??'')}
@@ -149,7 +155,7 @@ async function loadCloudData(){
   const [pRes,cRes,sRes]=await Promise.all([
     sb.from('products').select('id,name,author,tags,max_per_order,stock_qty,price,description,image_url,product_type,is_active,created_at').eq('is_active',true).order('created_at',{ascending:false}),
     sb.from('bundle_components').select('bundle_product_id,component_product_id,quantity'),
-    sb.from('shop_settings').select('name,slogan,payment_caption,qr_url').eq('id',1).maybeSingle()
+    sb.from('shop_settings').select('name,slogan,payment_caption,qr_url,tag_order').eq('id',1).maybeSingle()
   ]);
   if(pRes.error){showError('商品加载失败：'+pRes.error.message);return}
   products=pRes.data||[];bundleComponents=cRes.data||[];if(sRes.data)settings={...settings,...sRes.data};renderShop();
@@ -165,9 +171,14 @@ function renderFilters(){
   authorFilters.innerHTML=labels.map(a=>`<button class="chip ${a===activeAuthor?'active':''}" onclick="setAuthor('${escJs(a)}')">${esc(a)}</button>`).join('');
 }
 function renderTagFilters(){
-  const tags=[...new Set(products.flatMap(p=>Array.isArray(p.tags)?p.tags:[]).map(x=>String(x).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-CN'));
-  if(activeTag!=='全部'&&!tags.includes(activeTag))activeTag='全部';
-  tagFilters.innerHTML=['全部',...tags].map(t=>`<button class="chip ${t===activeTag?'active':''}" onclick="setTag('${escJs(t)}')">${esc(t)}</button>`).join('');
+  const allTags=[...new Set(products.flatMap(p=>Array.isArray(p.tags)?p.tags:[]).map(x=>String(x).trim()).filter(Boolean))];
+  const saved=Array.isArray(settings.tag_order)?settings.tag_order:[];
+  const ordered=[
+    ...saved.filter(t=>allTags.includes(t)),
+    ...allTags.filter(t=>!saved.includes(t)).sort((a,b)=>a.localeCompare(b,'zh-CN'))
+  ];
+  if(activeTag!=='全部'&&!ordered.includes(activeTag))activeTag='全部';
+  tagFilters.innerHTML=['全部',...ordered].map(t=>`<button class="chip ${t===activeTag?'active':''}" onclick="setTag('${escJs(t)}')">${esc(t)}</button>`).join('');
 }
 function setAuthor(a){activeAuthor=a;renderFilters();renderProducts()}
 function setTag(t){activeTag=t;renderTagFilters();renderProducts()}
