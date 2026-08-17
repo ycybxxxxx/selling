@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#85a5d6">
-<title>摊位小店 V7</title>
+<title>摊位小店 V10</title>
 <style>
 :root{
   --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
@@ -84,6 +84,15 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .filter-group{margin-bottom:8px}
 .filter-label{font-size:11px;color:var(--muted);font-weight:800;margin:0 0 6px 2px}
 
+
+.stock-note{font-size:11px;font-weight:750;color:#64748b}
+.stock-note.low{color:#b45309}.stock-note.out{color:#dc2626}
+.add-btn:disabled{background:#cbd5e1;cursor:not-allowed}
+.live-pill{display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;color:#64748b;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800}
+.live-pill.on{background:#ecfdf5;color:#166534}
+.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:100;background:#1f2937;color:#fff;border-radius:12px;padding:11px 15px;font-size:13px;font-weight:800;box-shadow:0 12px 30px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
 @media(max-width:900px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 75px 75px 75px}}
 @media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 64px 64px 64px;font-size:11px}}
 </style>
@@ -111,7 +120,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
   <div class="sheet"><div class="sheet-head"><h2>扫码买单</h2><button class="close" onclick="closeOverlay('checkoutOverlay')">×</button></div>
   <div class="order-summary" id="checkoutSummary"></div><div class="qr-box" id="qrBox"></div>
   <p style="text-align:center;color:var(--muted);font-size:13px" id="paymentCaption">请扫码付款</p>
-  <div class="errorbox" id="checkoutError"></div><div class="success" id="paySuccess">订单已提交，正在等待摊主确认。确认后才会计入正式销售记录。</div>
+  <div class="errorbox" id="checkoutError"></div><div class="success" id="paySuccess"></div>
   <button class="checkout-btn" id="paidBtn" onclick="confirmPaid()">我已完成付款</button>
   <div class="notice">点击“我已完成付款”只会生成“待确认”订单。摊主核实收款后在后台确认，订单才会计入销售额。</div></div>
 </div>
@@ -124,6 +133,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let products=[],bundleComponents=[],settings={name:'摊位小店',slogan:'欢迎选购喜欢的作品。',payment_caption:'请使用微信/支付宝扫码付款',qr_url:''};
 let cart=JSON.parse(localStorage.getItem('stall_cloud_cart')||'{}'),activeAuthor='全部',activeTag='全部',pendingOrder=null;
 function money(n){return '¥'+Number(n||0).toFixed(2)}
+function orderNo(n){return String(n??'')}
 function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
 function escJs(s){return String(s).replaceAll('\\','\\\\').replaceAll("'","\\'")}
 function authorEmoji(name){const a=['🎨','🧵','🌿','✨','🧸','🍀','🌙','🪄'];let s=0;for(const c of String(name))s+=c.charCodeAt(0);return a[s%a.length]}
@@ -137,7 +147,7 @@ function bundleText(p){
 async function loadCloudData(){
   showError('');
   const [pRes,cRes,sRes]=await Promise.all([
-    sb.from('products').select('id,name,author,tags,max_per_order,price,description,image_url,product_type,is_active,created_at').eq('is_active',true).order('created_at',{ascending:false}),
+    sb.from('products').select('id,name,author,tags,max_per_order,stock_qty,price,description,image_url,product_type,is_active,created_at').eq('is_active',true).order('created_at',{ascending:false}),
     sb.from('bundle_components').select('bundle_product_id,component_product_id,quantity'),
     sb.from('shop_settings').select('name,slogan,payment_caption,qr_url').eq('id',1).maybeSingle()
   ]);
@@ -161,6 +171,33 @@ function renderTagFilters(){
 }
 function setAuthor(a){activeAuthor=a;renderFilters();renderProducts()}
 function setTag(t){activeTag=t;renderTagFilters();renderProducts()}
+function availableStock(p){
+  if(!p)return 0;
+  if(p.product_type!=='bundle')return p.stock_qty==null?null:Number(p.stock_qty);
+  const comps=bundleComponents.filter(x=>x.bundle_product_id===p.id);
+  if(!comps.length)return 0;
+  let limits=[];
+  for(const c of comps){
+    const cp=products.find(x=>x.id===c.component_product_id);
+    if(!cp)return 0;
+    if(cp.stock_qty!=null)limits.push(Math.floor(Number(cp.stock_qty)/Number(c.quantity||1)));
+  }
+  return limits.length?Math.max(0,Math.min(...limits)):null;
+}
+function stockText(p){
+  const s=availableStock(p);
+  if(s==null)return '';
+  if(s<=0)return '<div class="stock-note out">已售罄</div>';
+  if(s<=3)return `<div class="stock-note low">仅剩 ${s} 件</div>`;
+  return `<div class="stock-note">库存 ${s}</div>`;
+}
+function effectiveCartLimit(p){
+  const vals=[];
+  const stock=availableStock(p),per=Number(p.max_per_order||0);
+  if(stock!=null)vals.push(stock);
+  if(per>0)vals.push(per);
+  return vals.length?Math.min(...vals):null;
+}
 function renderProducts(){
   let list=products;
   if(activeAuthor==='组合商品')list=list.filter(p=>p.product_type==='bundle');
@@ -177,11 +214,23 @@ function renderProducts(){
         <div class="product-desc">${esc(p.description||'')}</div>
         ${p.product_type==='bundle'?`<div class="bundle-components">${esc(bundleText(p)||'组合内容')}</div>`:''}
         ${Number(p.max_per_order||0)>0?`<div class="limit-note">每单限购 ${p.max_per_order} 件</div>`:''}
-        <div class="product-foot"><div class="price">${money(p.price)}</div><button class="add-btn" onclick="addToCart('${p.id}')">+</button></div>
+        ${stockText(p)}
+        <div class="product-foot"><div class="price">${money(p.price)}</div><button class="add-btn" ${availableStock(p)===0?'disabled':''} onclick="addToCart('${p.id}')">${availableStock(p)===0?'×':'+'}</button></div>
       </div>
     </article>`).join('');
 }
-function addToCart(id){const p=products.find(x=>x.id===id);if(!p)return;const max=Number(p.max_per_order||0);const next=(cart[id]||0)+1;if(max>0&&next>max){alert(`“${p.name}”每单限购 ${max} 件`);return}cart[id]=next;saveCart()}
+function addToCart(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  const limit=effectiveCartLimit(p),next=(cart[id]||0)+1;
+  if(limit!=null&&next>limit){
+    const stock=availableStock(p),per=Number(p.max_per_order||0);
+    if(stock===0)alert(`“${p.name}”已售罄`);
+    else if(stock!=null&&stock<=per||stock!=null&&per<=0)alert(`“${p.name}”当前库存仅剩 ${stock} 件`);
+    else alert(`“${p.name}”每单限购 ${per} 件`);
+    return;
+  }
+  cart[id]=next;saveCart();
+}
 function updateCartCount(){cartCount.textContent=Object.values(cart).reduce((a,b)=>a+b,0)}
 function openCart(){renderCart();cartOverlay.classList.add('show')}
 function renderCart(){
@@ -193,7 +242,17 @@ function renderCart(){
     <div class="cart-side"><b>${money(p.price*qty)}</b></div></div>`).join(''):'<div class="empty">购物车还是空的</div>';
   cartTotal.textContent=money(getCartTotal());
 }
-function changeQty(id,d){const p=products.find(x=>x.id===id);if(!p)return;const max=Number(p.max_per_order||0);const next=(cart[id]||0)+d;if(max>0&&next>max){alert(`“${p.name}”每单限购 ${max} 件`);return}cart[id]=next;if(cart[id]<=0)delete cart[id];saveCart();renderCart()}
+function changeQty(id,d){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  const next=(cart[id]||0)+d,limit=effectiveCartLimit(p);
+  if(d>0&&limit!=null&&next>limit){
+    const stock=availableStock(p),per=Number(p.max_per_order||0);
+    if(stock!=null&&(per<=0||stock<=per))alert(`“${p.name}”当前库存仅剩 ${stock} 件`);
+    else alert(`“${p.name}”每单限购 ${per} 件`);
+    return;
+  }
+  cart[id]=next;if(cart[id]<=0)delete cart[id];saveCart();renderCart();
+}
 function getCartTotal(){return Object.entries(cart).reduce((s,[id,q])=>{const p=products.find(x=>x.id===id);return s+(p?Number(p.price)*q:0)},0)}
 function openCheckout(){
   if(getCartTotal()<=0){alert('购物车还是空的');return}
@@ -205,10 +264,40 @@ function openCheckout(){
   closeOverlay('cartOverlay');checkoutOverlay.classList.add('show');
 }
 async function confirmPaid(){
-  if(!pendingOrder?.length)return;paidBtn.disabled=true;paidBtn.textContent='正在记录订单…';checkoutError.style.display='none';
-  const {error}=await sb.rpc('create_shop_order',{items_json:pendingOrder});
-  if(error){checkoutError.textContent='订单记录失败：'+error.message;checkoutError.style.display='block';paidBtn.disabled=false;paidBtn.textContent='重新提交';return}
-  cart={};saveCart();pendingOrder=null;paySuccess.style.display='block';paidBtn.textContent='订单已记录';
+  if(!pendingOrder?.length)return;
+  paidBtn.disabled=true;paidBtn.textContent='正在记录订单…';checkoutError.style.display='none';
+
+  const {data:orderId,error}=await sb.rpc('create_shop_order',{items_json:pendingOrder});
+
+  if(error){
+    checkoutError.textContent='订单记录失败：'+error.message;
+    checkoutError.style.display='block';
+    paidBtn.disabled=false;
+    paidBtn.textContent='重新提交';
+    return;
+  }
+
+  const {data:orderNumber,error:numberError}=await sb.rpc('get_shop_order_number',{p_order_id:orderId});
+
+  if(numberError || orderNumber==null){
+    checkoutError.textContent='订单已创建，但订单号获取失败。请向摊主说明下单时间。';
+    checkoutError.style.display='block';
+    paidBtn.disabled=false;
+    paidBtn.textContent='订单已创建';
+    return;
+  }
+
+  const no=orderNo(orderNumber);
+  cart={};saveCart();pendingOrder=null;
+
+  paySuccess.innerHTML=`<b>订单已提交，等待摊主确认。</b><br>
+    <span style="font-size:13px">订单号：</span>
+    <span style="font-size:26px;font-weight:900;letter-spacing:1px">${esc(no)}</span><br>
+    <span style="font-size:12px">请记住或截图保存这个订单号，方便与摊主核对。</span>`;
+  paySuccess.style.display='block';
+
+  paidBtn.textContent='订单已提交';
+  alert(`订单提交成功！\n订单号：${no}\n\n请记住或截图保存订单号。`);
 }
 function closeOverlay(id){document.getElementById(id).classList.remove('show')}function overlayClose(e,id){if(e.target.id===id)closeOverlay(id)}
 loadCloudData();
