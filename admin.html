@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#85a5d6"><title>摊主管理后台 V7</title><style>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#85a5d6"><title>摊主管理后台 V10</title><style>
 :root{
   --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
   --brand:#85a5d6;--brand-dark:#607fae;--brand-soft:#edf3fa;--green:#16a34a;
@@ -79,6 +79,15 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .filter-group{margin-bottom:8px}
 .filter-label{font-size:11px;color:var(--muted);font-weight:800;margin:0 0 6px 2px}
 
+
+.stock-note{font-size:11px;font-weight:750;color:#64748b}
+.stock-note.low{color:#b45309}.stock-note.out{color:#dc2626}
+.add-btn:disabled{background:#cbd5e1;cursor:not-allowed}
+.live-pill{display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;color:#64748b;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800}
+.live-pill.on{background:#ecfdf5;color:#166534}
+.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:100;background:#1f2937;color:#fff;border-radius:12px;padding:11px 15px;font-size:13px;font-weight:800;box-shadow:0 12px 30px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
 @media(max-width:900px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 75px 75px 75px}}
 @media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 64px 64px 64px;font-size:11px}}
 </style></head>
@@ -99,7 +108,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <div id="adminApp" class="hidden"><div class="admin-shell">
-  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台 V7</div><div style="font-size:12px;color:var(--muted);margin-top:4px">多标签 · 每单限购 · 订单确认 · 组合商品 · 作者分摊</div></div><button class="btn" onclick="logoutAdmin()">退出登录</button></div>
+  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台 V10</div><div style="font-size:12px;color:var(--muted);margin-top:4px">纯数字订单号 · 实时订单 · 库存 · 多标签 · 组合商品</div></div><div style="display:flex;align-items:center;gap:8px"><span id="livePill" class="live-pill">● 正在连接实时订单</span><button class="btn" onclick="logoutAdmin()">退出登录</button></div></div>
   <div id="adminError" class="errorbox"></div>
 
   <div class="admin-grid">
@@ -116,6 +125,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
         <div class="field"><label>作者</label><input id="pAuthor" placeholder="作者只能填写一个，用于收入统计"></div>
         <div class="field"><label>标签（可多个）</label><input id="pTags" placeholder="例如：钥匙扣, 蓝色, 新品"></div>
         <div class="field"><label>每单限购</label><input id="pLimit" type="number" min="0" step="1" placeholder="0 或留空 = 不限购"></div>
+        <div class="field"><label>库存</label><input id="pStock" type="number" min="0" step="1" placeholder="留空 = 不限制库存"></div>
         <div class="field"><label>价格（元）</label><input id="pPrice" type="number" min="0" step="0.01"></div>
         <div class="field"><label>简介</label><textarea id="pDesc"></textarea></div>
         <div class="field"><label>商品图片</label><input id="pImage" type="file" accept="image/*" onchange="previewProduct(event)"><img id="pPreview" class="preview"></div>
@@ -133,6 +143,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
         <div class="field"><label>组合图片</label><input id="bImage" type="file" accept="image/*" onchange="previewBundle(event)"><img id="bPreview" class="preview"></div>
         <div class="field"><label>选择组合内容与数量</label><div id="bundleOptions"></div></div>
         <div class="notice" id="bundleOriginalPrice">组合原价合计：¥0.00</div>
+        <div class="notice" id="bundleStockInfo">组合可售库存：由组成单品库存自动计算</div>
         <div class="field" style="margin-top:10px"><label><input id="bActive" type="checkbox" checked style="width:auto;margin-right:6px">顾客端显示</label></div>
         <button class="btn primary" style="width:100%" onclick="saveBundle()">保存组合商品</button><button id="cancelBundleEdit" class="btn hidden" style="width:100%;margin-top:8px" onclick="resetBundleForm()">取消编辑</button>
         <div class="notice">组合收入会按其中各单品“原价 × 数量”的占比自动分摊给作者。</div>
@@ -162,26 +173,51 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
         <div class="author-stat head"><span>作者</span><span>销售</span><span>退款</span><span>净收入</span></div><div id="authorStats"></div>
       </div>
 
-      <div class="panel" style="margin-bottom:16px"><div class="sheet-head"><h3>商品管理</h3><span id="productCount" style="font-size:12px;color:var(--muted)"></span></div><div id="adminProducts" class="admin-list"></div></div>
-
-      <div class="panel"><div class="sheet-head"><h3>订单记录</h3><button class="btn small" onclick="exportOrders()">导出 CSV</button></div>
-        <div class="notice" style="margin-bottom:10px">顾客提交后先进入“待确认”。只有后台点击“确认订单”后才计入销售；退款只记录账务状态，实际资金仍需在收款平台操作。</div>
+      <div class="panel" style="margin-bottom:16px"><div class="sheet-head"><h3>订单记录</h3><button class="btn small" onclick="exportOrders()">导出 CSV</button></div>
+        <div class="notice" style="margin-bottom:10px">顾客提交后会获得订单号。可让顾客出示订单号核对付款；只有点击“确认订单”后才计入销售。</div>
         <div id="ordersList"></div></div>
+
+      <div class="panel" style="margin-bottom:16px"><div class="sheet-head"><h3>商品管理</h3><span id="productCount" style="font-size:12px;color:var(--muted)"></span></div><div id="adminProducts" class="admin-list"></div></div>
     </section>
   </div>
 </div></div>
 
+<div id="newOrderToast" class="toast">有新订单待确认</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://okgnpgamahaucmvyquzx.supabase.co",SUPABASE_KEY="sb_publishable_guo63tjKVNsIplXZ5bdGuQ_Z6FdzACy",FIXED_PIN='30102';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let products=[],bundleComponents=[],orders=[],settings={},pendingProductFile=null,pendingBundleFile=null,pendingQrFile=null;
-function money(n){return '¥'+Number(n||0).toFixed(2)}function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
+function money(n){return '¥'+Number(n||0).toFixed(2)}
+function orderNo(n){return String(n??'')}function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
 function authorEmoji(name){const a=['🎨','🧵','🌿','✨','🧸','🍀','🌙','🪄'];let s=0;for(const c of String(name))s+=c.charCodeAt(0);return a[s%a.length]}
 function showAdminError(msg){adminError.textContent=msg||'';adminError.style.display=msg?'block':'none'}function showAuthError(msg){authErr.textContent=msg||'';authErr.style.display=msg?'block':'none'}
 async function checkPin(){if(pinInput.value.trim()!==FIXED_PIN){pinErr.textContent='PIN 不正确';pinErr.style.display='block';return}pinGate.classList.add('hidden');const {data:{session}}=await sb.auth.getSession();if(session)await enterIfAdmin();else authGate.classList.remove('hidden')}
 async function loginAdmin(){showAuthError('');const {error}=await sb.auth.signInWithPassword({email:loginEmail.value.trim(),password:loginPassword.value});if(error){showAuthError('登录失败：'+error.message);return}await enterIfAdmin()}
-async function enterIfAdmin(){const {data,error}=await sb.rpc('is_shop_admin');if(error||data!==true){showAuthError('这个账号没有摊主管理权限。');await sb.auth.signOut();authGate.classList.remove('hidden');return}authGate.classList.add('hidden');adminApp.classList.remove('hidden');await loadAdminData()}
+async function enterIfAdmin(){const {data,error}=await sb.rpc('is_shop_admin');if(error||data!==true){showAuthError('这个账号没有摊主管理权限。');await sb.auth.signOut();authGate.classList.remove('hidden');return}authGate.classList.add('hidden');adminApp.classList.remove('hidden');await loadAdminData();startAdminRealtime()}
+let adminRealtimeChannel=null,reloadTimer=null,toastTimer=null;
+function scheduleAdminReload(delay=350){clearTimeout(reloadTimer);reloadTimer=setTimeout(()=>loadAdminData(),delay)}
+function showNewOrderToast(){
+  if(!window.newOrderToast)return;
+  newOrderToast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>newOrderToast.classList.remove('show'),3500);
+}
+function startAdminRealtime(){
+  if(adminRealtimeChannel)return;
+  adminRealtimeChannel=sb.channel('stall-admin-live-v8')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'orders'},payload=>{
+      if(payload.new?.status==='pending_confirmation')showNewOrderToast();
+      scheduleAdminReload(450);
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders'},()=>scheduleAdminReload())
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'order_items'},()=>scheduleAdminReload(450))
+    .on('postgres_changes',{event:'*',schema:'public',table:'order_item_allocations'},()=>scheduleAdminReload())
+    .on('postgres_changes',{event:'*',schema:'public',table:'products'},()=>scheduleAdminReload())
+    .on('postgres_changes',{event:'*',schema:'public',table:'bundle_components'},()=>scheduleAdminReload())
+    .subscribe(status=>{
+      if(!window.livePill)return;
+      const on=status==='SUBSCRIBED';livePill.classList.toggle('on',on);livePill.textContent=on?'● 实时订单已连接':'● '+(status==='CHANNEL_ERROR'?'实时连接异常':'正在连接实时订单');
+    });
+}
 async function logoutAdmin(){await sb.auth.signOut();location.reload()}
 async function loadAdminData(){
   showAdminError('');
@@ -189,38 +225,65 @@ async function loadAdminData(){
     sb.from('products').select('*').order('created_at',{ascending:false}),
     sb.from('bundle_components').select('*'),
     sb.from('shop_settings').select('*').eq('id',1).single(),
-    sb.from('orders').select('id,total,status,confirmed_at,cancel_reason,cancelled_at,refund_reason,refund_amount,refunded_at,created_at,order_items(id,product_name,author,unit_price,quantity,line_total,product_type,bundle_snapshot,order_item_allocations(id,author,amount))').order('created_at',{ascending:false}).limit(1000)
+    sb.from('orders').select('id,order_no,total,status,confirmed_at,cancel_reason,cancelled_at,refund_reason,refund_amount,refunded_at,created_at,order_items(id,product_name,author,unit_price,quantity,line_total,product_type,bundle_snapshot,order_item_allocations(id,author,amount))').order('created_at',{ascending:false}).limit(1000)
   ]);
   if(p.error||c.error||s.error||o.error){showAdminError([p.error?.message,c.error?.message,s.error?.message,o.error?.message].filter(Boolean).join(' / '));return}
   products=p.data||[];bundleComponents=c.data||[];settings=s.data||{};orders=o.data||[];
   renderProducts();renderBundleOptions();renderOrders();renderStats();loadSettingsForm();
 }
 function switchTab(t){for(const x of ['product','bundle','shop'])document.getElementById(x+'Form').classList.toggle('hidden',x!==t);tabProduct.classList.toggle('active',t==='product');tabBundle.classList.toggle('active',t==='bundle');tabShop.classList.toggle('active',t==='shop')}
+function availableStock(p){
+  if(!p)return 0;
+  if(p.product_type!=='bundle')return p.stock_qty==null?null:Number(p.stock_qty);
+  const comps=bundleComponents.filter(x=>x.bundle_product_id===p.id);
+  if(!comps.length)return 0;
+  const limits=[];
+  for(const c of comps){
+    const cp=products.find(x=>x.id===c.component_product_id);
+    if(!cp)return 0;
+    if(cp.stock_qty!=null)limits.push(Math.floor(Number(cp.stock_qty)/Number(c.quantity||1)));
+  }
+  return limits.length?Math.max(0,Math.min(...limits)):null;
+}
+function inventoryLabel(p){
+  const s=availableStock(p);
+  if(s==null)return '库存不限';
+  return p.product_type==='bundle'?`组合可售 ${s}`:`库存 ${s}`;
+}
 function renderProducts(){
   productCount.textContent=`共 ${products.length} 件（含组合）`;adminProducts.innerHTML=products.length?products.map(p=>`
   <div class="admin-product">${p.image_url?`<img src="${esc(p.image_url)}">`:`<div class="mini-ph">${p.product_type==='bundle'?'🎁':authorEmoji(p.author)}</div>`}
-  <div><div class="name">${esc(p.name)} ${p.product_type==='bundle'?'<span style="font-size:11px;color:#4f46e5">[组合]</span>':''} ${p.is_active?'':'<span style="color:#9ca3af;font-size:11px">（已隐藏）</span>'}</div><div class="meta">${p.product_type==='bundle'?'组合商品':esc(p.author)} · ${money(p.price)}${Number(p.max_per_order||0)>0?` · 每单限购${p.max_per_order}`:''}</div>${(p.tags||[]).length?`<div class="tag-list" style="margin-top:5px">${p.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>
+  <div><div class="name">${esc(p.name)} ${p.product_type==='bundle'?'<span style="font-size:11px;color:#4f46e5">[组合]</span>':''} ${p.is_active?'':'<span style="color:#9ca3af;font-size:11px">（已隐藏）</span>'}</div><div class="meta">${p.product_type==='bundle'?'组合商品':esc(p.author)} · ${money(p.price)}${Number(p.max_per_order||0)>0?` · 每单限购${p.max_per_order}`:''} · ${inventoryLabel(p)}</div>${(p.tags||[]).length?`<div class="tag-list" style="margin-top:5px">${p.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>
   <div class="admin-actions"><button class="btn small" onclick="${p.product_type==='bundle'?`editBundle('${p.id}')`:`editProduct('${p.id}')`}">编辑</button><button class="btn small danger" onclick="deleteProduct('${p.id}')">删除</button></div></div>`).join(''):'<div class="empty">还没有商品</div>';
 }
-function editProduct(id){const p=products.find(x=>x.id===id);if(!p)return;switchTab('product');editId.value=p.id;pName.value=p.name;pAuthor.value=p.author;pTags.value=(p.tags||[]).join(', ');pLimit.value=p.max_per_order||'';pPrice.value=p.price;pDesc.value=p.description||'';pActive.checked=!!p.is_active;oldImagePath.value=p.image_path||'';if(p.image_url){pPreview.src=p.image_url;pPreview.style.display='block'}else pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='编辑单品';cancelEdit.classList.remove('hidden')}
-function resetProductForm(){editId.value='';pName.value='';pAuthor.value='';pTags.value='';pLimit.value='';pPrice.value='';pDesc.value='';pActive.checked=true;oldImagePath.value='';pImage.value='';pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='新增单品';cancelEdit.classList.add('hidden')}
+function editProduct(id){const p=products.find(x=>x.id===id);if(!p)return;switchTab('product');editId.value=p.id;pName.value=p.name;pAuthor.value=p.author;pTags.value=(p.tags||[]).join(', ');pLimit.value=p.max_per_order||'';pStock.value=p.stock_qty==null?'':p.stock_qty;pPrice.value=p.price;pDesc.value=p.description||'';pActive.checked=!!p.is_active;oldImagePath.value=p.image_path||'';if(p.image_url){pPreview.src=p.image_url;pPreview.style.display='block'}else pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='编辑单品';cancelEdit.classList.remove('hidden')}
+function resetProductForm(){editId.value='';pName.value='';pAuthor.value='';pTags.value='';pLimit.value='';pStock.value='';pPrice.value='';pDesc.value='';pActive.checked=true;oldImagePath.value='';pImage.value='';pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='新增单品';cancelEdit.classList.add('hidden')}
 function previewProduct(e){const f=e.target.files?.[0];if(!f)return;pendingProductFile=f;pPreview.src=URL.createObjectURL(f);pPreview.style.display='block'}function previewBundle(e){const f=e.target.files?.[0];if(!f)return;pendingBundleFile=f;bPreview.src=URL.createObjectURL(f);bPreview.style.display='block'}function previewQR(e){const f=e.target.files?.[0];if(!f)return;pendingQrFile=f;qrPreview.src=URL.createObjectURL(f);qrPreview.style.display='block'}
 function safeExt(f){return (f.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg'}
 async function uploadAsset(file,pathBase){const path=`${pathBase}-${Date.now()}.${safeExt(file)}`;const {error}=await sb.storage.from('shop-assets').upload(path,file,{cacheControl:'3600'});if(error)throw error;return {path,url:sb.storage.from('shop-assets').getPublicUrl(path).data.publicUrl}}
 async function removeAsset(path){if(path)await sb.storage.from('shop-assets').remove([path])}
 function parseTags(v){return [...new Set(String(v||'').split(/[,，]/).map(x=>x.trim()).filter(Boolean))].slice(0,20)}
 function normalizeLimit(v){const n=Math.floor(Number(v||0));return Number.isFinite(n)&&n>0?Math.min(n,999):null}
+function normalizeStock(v){if(String(v??'').trim()==='')return null;const n=Math.floor(Number(v));return Number.isFinite(n)&&n>=0?Math.min(n,999999):null}
 async function saveProduct(){
   const id=editId.value||crypto.randomUUID(),name=pName.value.trim(),author=pAuthor.value.trim(),price=Number(pPrice.value);if(!name||!author||!(price>=0)){showAdminError('请填写商品名称、作者和正确价格。');return}
   let image_path=oldImagePath.value||null,image_url=products.find(x=>x.id===editId.value)?.image_url||null;
   try{if(pendingProductFile){const up=await uploadAsset(pendingProductFile,`products/${id}`);if(image_path)await removeAsset(image_path);image_path=up.path;image_url=up.url}
-  const {error}=await sb.from('products').upsert({id,name,author,price:Number(price.toFixed(2)),description:pDesc.value.trim(),tags:parseTags(pTags.value),max_per_order:normalizeLimit(pLimit.value),image_path,image_url,is_active:pActive.checked,product_type:'single',updated_at:new Date().toISOString()});if(error)throw error;resetProductForm();await loadAdminData()}catch(e){showAdminError('保存单品失败：'+e.message)}
+  const {error}=await sb.from('products').upsert({id,name,author,price:Number(price.toFixed(2)),description:pDesc.value.trim(),tags:parseTags(pTags.value),max_per_order:normalizeLimit(pLimit.value),stock_qty:normalizeStock(pStock.value),image_path,image_url,is_active:pActive.checked,product_type:'single',updated_at:new Date().toISOString()});if(error)throw error;resetProductForm();await loadAdminData()}catch(e){showAdminError('保存单品失败：'+e.message)}
 }
 function renderBundleOptions(selected={}){
   const singles=products.filter(p=>p.product_type!=='bundle');bundleOptions.innerHTML=singles.length?singles.map(p=>`<div class="bundle-option"><label><input type="checkbox" class="bundle-check" data-id="${p.id}" ${selected[p.id]?'checked':''}> ${esc(p.name)} <span style="color:var(--muted)">(${esc(p.author)} · ${money(p.price)})</span></label><input type="number" min="1" value="${selected[p.id]||1}" class="bundle-qty" data-id="${p.id}" onchange="updateBundleOriginal()" oninput="updateBundleOriginal()"></div>`).join(''):'<div class="notice">请先创建至少一个单品。</div>';
   document.querySelectorAll('.bundle-check').forEach(x=>x.addEventListener('change',updateBundleOriginal));updateBundleOriginal();
 }
-function updateBundleOriginal(){let total=0;document.querySelectorAll('.bundle-check:checked').forEach(c=>{const p=products.find(x=>x.id===c.dataset.id),q=Number(document.querySelector(`.bundle-qty[data-id="${c.dataset.id}"]`)?.value||1);if(p)total+=Number(p.price)*q});bundleOriginalPrice.textContent='组合原价合计：'+money(total)}
+function updateBundleOriginal(){
+  let total=0,limits=[];
+  document.querySelectorAll('.bundle-check:checked').forEach(c=>{
+    const p=products.find(x=>x.id===c.dataset.id),q=Math.max(1,Number(document.querySelector(`.bundle-qty[data-id="${c.dataset.id}"]`)?.value||1));
+    if(p){total+=Number(p.price)*q;if(p.stock_qty!=null)limits.push(Math.floor(Number(p.stock_qty)/q))}
+  });
+  bundleOriginalPrice.textContent='组合原价合计：'+money(total);
+  if(window.bundleStockInfo)bundleStockInfo.textContent='组合可售库存：'+(limits.length?Math.max(0,Math.min(...limits)):'不限库存');
+}
 function editBundle(id){const p=products.find(x=>x.id===id);if(!p)return;switchTab('bundle');bundleEditId.value=p.id;bName.value=p.name;bPrice.value=p.price;bTags.value=(p.tags||[]).join(', ');bLimit.value=p.max_per_order||'';bDesc.value=p.description||'';bActive.checked=!!p.is_active;bundleOldImagePath.value=p.image_path||'';if(p.image_url){bPreview.src=p.image_url;bPreview.style.display='block'}else bPreview.style.display='none';pendingBundleFile=null;const sel={};bundleComponents.filter(x=>x.bundle_product_id===id).forEach(x=>sel[x.component_product_id]=x.quantity);renderBundleOptions(sel);bundleFormTitle.textContent='编辑组合商品';cancelBundleEdit.classList.remove('hidden')}
 function resetBundleForm(){bundleEditId.value='';bName.value='';bPrice.value='';bTags.value='';bLimit.value='';bDesc.value='';bActive.checked=true;bundleOldImagePath.value='';bImage.value='';bPreview.style.display='none';pendingBundleFile=null;bundleFormTitle.textContent='新增组合商品';cancelBundleEdit.classList.add('hidden');renderBundleOptions()}
 async function saveBundle(){
@@ -239,7 +302,7 @@ function statusLabel(s){return s==='pending_confirmation'?'<span class="status p
 function renderOrders(){
   const priority={pending_confirmation:0,confirmed:1,refunded:2,cancelled:3};
   const list=[...orders].sort((a,b)=>(priority[a.status]??9)-(priority[b.status]??9)||new Date(b.created_at)-new Date(a.created_at));
-  ordersList.innerHTML=list.length?list.map(o=>`<div class="order-row"><div class="order-top"><div><div class="order-id">${esc(o.id.slice(0,8))} · ${money(o.total)} ${statusLabel(o.status)}</div><div class="order-time">${new Date(o.created_at).toLocaleString('zh-CN',{hour12:false})}</div></div></div>
+  ordersList.innerHTML=list.length?list.map(o=>`<div class="order-row"><div class="order-top"><div><div class="order-id">订单号 ${orderNo(o.order_no)} · ${money(o.total)} ${statusLabel(o.status)}</div><div class="order-time">${new Date(o.created_at).toLocaleString('zh-CN',{hour12:false})}</div></div></div>
   <div class="order-items">${(o.order_items||[]).map(i=>`${esc(i.product_name)}${i.product_type==='bundle'?' [组合]':''} ×${i.quantity}`).join('，')}</div>
   ${o.status==='pending_confirmation'?`<div class="notice">这笔订单尚未计入销售额。请核实收款后再确认。</div>`:''}
   ${o.status==='confirmed'&&o.confirmed_at?`<div class="notice">确认时间：${new Date(o.confirmed_at).toLocaleString('zh-CN',{hour12:false})}</div>`:''}
@@ -271,9 +334,9 @@ function renderStats(){
 }
 function exportOrders(){
   if(!orders.length){alert('暂无订单');return}
-  const rows=[['订单号','下单时间','状态','确认时间','商品','类型','作者/组合','单价','数量','小计','退款金额','取消/退款原因']];
+  const rows=[['订单号','数据库ID','下单时间','状态','确认时间','商品','类型','作者/组合','单价','数量','小计','退款金额','取消/退款原因']];
   const statusText=s=>s==='pending_confirmation'?'待确认':s==='cancelled'?'已取消':s==='refunded'?'已退款':'已确认';
-  orders.forEach(o=>(o.order_items||[]).forEach(i=>rows.push([o.id,new Date(o.created_at).toLocaleString('zh-CN',{hour12:false}),statusText(o.status),o.confirmed_at?new Date(o.confirmed_at).toLocaleString('zh-CN',{hour12:false}):'',i.product_name,i.product_type==='bundle'?'组合':'单品',i.author,i.unit_price,i.quantity,i.line_total,o.status==='refunded'?o.refund_amount:'',o.cancel_reason||o.refund_reason||''])));
+  orders.forEach(o=>(o.order_items||[]).forEach(i=>rows.push([o.order_no,o.id,new Date(o.created_at).toLocaleString('zh-CN',{hour12:false}),statusText(o.status),o.confirmed_at?new Date(o.confirmed_at).toLocaleString('zh-CN',{hour12:false}):'',i.product_name,i.product_type==='bundle'?'组合':'单品',i.author,i.unit_price,i.quantity,i.line_total,o.status==='refunded'?o.refund_amount:'',o.cancel_reason||o.refund_reason||''])));
   let gross=0,refund=0,cancelled=0,pending=0,confirmed=0;const authors={};
   orders.forEach(o=>{
     if(o.status==='pending_confirmation'){pending++;return}
