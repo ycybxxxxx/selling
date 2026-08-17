@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#85a5d6"><title>摊主管理后台</title><style>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#85a5d6"><title>摊主管理后台 V11</title><style>
 :root{
   --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
   --brand:#85a5d6;--brand-dark:#607fae;--brand-soft:#edf3fa;--green:#16a34a;
@@ -88,6 +88,12 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:100;background:#1f2937;color:#fff;border-radius:12px;padding:11px 15px;font-size:13px;font-weight:800;box-shadow:0 12px 30px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.2s}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+
+.tag-order-list{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.tag-order-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 9px;background:#fff}
+.tag-order-actions{display:flex;gap:5px}
+.tag-order-actions button{width:32px;height:30px;border:1px solid var(--line);background:#fff;border-radius:8px;font-weight:800}
+
 @media(max-width:900px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 75px 75px 75px}}
 @media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 64px 64px 64px;font-size:11px}}
 </style></head>
@@ -108,7 +114,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <div id="adminApp" class="hidden"><div class="admin-shell">
-  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台</div><div style="font-size:12px;color:var(--muted);margin-top:4px">纯数字订单号 · 实时订单 · 库存 · 多标签 · 组合商品</div></div><div style="display:flex;align-items:center;gap:8px"><span id="livePill" class="live-pill">● 正在连接实时订单</span><button class="btn" onclick="logoutAdmin()">退出登录</button></div></div>
+  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台 V11</div><div style="font-size:12px;color:var(--muted);margin-top:4px">标签排序 · 纯数字订单号 · 实时订单 · 库存 · 组合商品</div></div><div style="display:flex;align-items:center;gap:8px"><span id="livePill" class="live-pill">● 正在连接实时订单</span><button class="btn" onclick="logoutAdmin()">退出登录</button></div></div>
   <div id="adminError" class="errorbox"></div>
 
   <div class="admin-grid">
@@ -152,7 +158,13 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
       <div id="shopForm" class="hidden">
         <h3>店铺设置</h3><input type="hidden" id="oldQrPath">
         <div class="field"><label>店铺名称</label><input id="sName"></div><div class="field"><label>店铺介绍</label><textarea id="sSlogan"></textarea></div>
-        <div class="field"><label>支付提示</label><input id="sPaymentCaption"></div><div class="field"><label>收款二维码</label><input id="sQR" type="file" accept="image/*" onchange="previewQR(event)"><img id="qrPreview" class="preview"></div>
+        <div class="field"><label>支付提示</label><input id="sPaymentCaption"></div>
+        <div class="field">
+          <label>顾客端标签顺序</label>
+          <div id="tagOrderList" class="tag-order-list"></div>
+          <div class="notice">使用 ↑ / ↓ 调整标签筛选顺序。新出现但尚未排序的标签会自动排在最后。</div>
+        </div>
+        <div class="field"><label>收款二维码</label><input id="sQR" type="file" accept="image/*" onchange="previewQR(event)"><img id="qrPreview" class="preview"></div>
         <button class="btn primary" style="width:100%" onclick="saveSettings()">保存店铺设置</button>
       </div>
     </aside>
@@ -187,7 +199,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 <script>
 const SUPABASE_URL="https://okgnpgamahaucmvyquzx.supabase.co",SUPABASE_KEY="sb_publishable_guo63tjKVNsIplXZ5bdGuQ_Z6FdzACy",FIXED_PIN='30102';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let products=[],bundleComponents=[],orders=[],settings={},pendingProductFile=null,pendingBundleFile=null,pendingQrFile=null;
+let products=[],bundleComponents=[],orders=[],settings={},tagOrder=[],pendingProductFile=null,pendingBundleFile=null,pendingQrFile=null;
 function money(n){return '¥'+Number(n||0).toFixed(2)}
 function orderNo(n){return String(n??'')}function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
 function authorEmoji(name){const a=['🎨','🧵','🌿','✨','🧸','🍀','🌙','🪄'];let s=0;for(const c of String(name))s+=c.charCodeAt(0);return a[s%a.length]}
@@ -296,8 +308,34 @@ async function saveBundle(){
   }catch(e){showAdminError('保存组合商品失败：'+e.message)}
 }
 async function deleteProduct(id){const p=products.find(x=>x.id===id);if(!confirm(`确定删除“${p?.name||'这个商品'}”吗？`))return;try{const {error}=await sb.from('products').delete().eq('id',id);if(error)throw error;if(p?.image_path)await removeAsset(p.image_path);await loadAdminData()}catch(e){showAdminError('删除失败：'+e.message)}}
-function loadSettingsForm(){sName.value=settings.name||'';sSlogan.value=settings.slogan||'';sPaymentCaption.value=settings.payment_caption||'';oldQrPath.value=settings.qr_path||'';if(settings.qr_url){qrPreview.src=settings.qr_url;qrPreview.style.display='block'}else qrPreview.style.display='none';pendingQrFile=null}
-async function saveSettings(){try{let qr_path=settings.qr_path||null,qr_url=settings.qr_url||null;if(pendingQrFile){const up=await uploadAsset(pendingQrFile,'settings/payment-qr');if(qr_path)await removeAsset(qr_path);qr_path=up.path;qr_url=up.url}const {error}=await sb.from('shop_settings').upsert({id:1,name:sName.value.trim()||'摊位小店',slogan:sSlogan.value.trim(),payment_caption:sPaymentCaption.value.trim()||'请扫码付款',qr_path,qr_url,updated_at:new Date().toISOString()});if(error)throw error;await loadAdminData();alert('店铺设置已同步')}catch(e){showAdminError('保存失败：'+e.message)}}
+function loadSettingsForm(){
+  sName.value=settings.name||'';
+  sSlogan.value=settings.slogan||'';
+  sPaymentCaption.value=settings.payment_caption||'';
+  oldQrPath.value=settings.qr_path||'';
+  if(settings.qr_url){qrPreview.src=settings.qr_url;qrPreview.style.display='block'}else qrPreview.style.display='none';
+  pendingQrFile=null;
+  const allTags=[...new Set(products.flatMap(p=>Array.isArray(p.tags)?p.tags:[]).map(x=>String(x).trim()).filter(Boolean))];
+  const saved=Array.isArray(settings.tag_order)?settings.tag_order:[];
+  tagOrder=[...saved.filter(t=>allTags.includes(t)),...allTags.filter(t=>!saved.includes(t)).sort((a,b)=>a.localeCompare(b,'zh-CN'))];
+  renderTagOrderEditor();
+}
+function renderTagOrderEditor(){
+  if(!window.tagOrderList)return;
+  tagOrderList.innerHTML=tagOrder.length?tagOrder.map((t,i)=>`<div class="tag-order-row">
+    <span>${esc(t)}</span>
+    <div class="tag-order-actions">
+      <button type="button" onclick="moveTagOrder(${i},-1)" ${i===0?'disabled':''}>↑</button>
+      <button type="button" onclick="moveTagOrder(${i},1)" ${i===tagOrder.length-1?'disabled':''}>↓</button>
+    </div>
+  </div>`).join(''):'<div class="notice">当前还没有标签。</div>';
+}
+function moveTagOrder(i,d){
+  const j=i+d;if(j<0||j>=tagOrder.length)return;
+  [tagOrder[i],tagOrder[j]]=[tagOrder[j],tagOrder[i]];
+  renderTagOrderEditor();
+}
+async function saveSettings(){try{let qr_path=settings.qr_path||null,qr_url=settings.qr_url||null;if(pendingQrFile){const up=await uploadAsset(pendingQrFile,'settings/payment-qr');if(qr_path)await removeAsset(qr_path);qr_path=up.path;qr_url=up.url}const {error}=await sb.from('shop_settings').upsert({id:1,name:sName.value.trim()||'摊位小店',slogan:sSlogan.value.trim(),payment_caption:sPaymentCaption.value.trim()||'请扫码付款',tag_order:tagOrder,qr_path,qr_url,updated_at:new Date().toISOString()});if(error)throw error;await loadAdminData();alert('店铺设置已同步')}catch(e){showAdminError('保存失败：'+e.message)}}
 function statusLabel(s){return s==='pending_confirmation'?'<span class="status pending">待确认</span>':s==='cancelled'?'<span class="status cancelled">已取消</span>':s==='refunded'?'<span class="status refunded">已退款</span>':'<span class="status ok">已确认</span>'}
 function renderOrders(){
   const priority={pending_confirmation:0,confirmed:1,refunded:2,cancelled:3};
