@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#85a5d6"><title>摊主管理后台 V5</title><style>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#85a5d6"><title>摊主管理后台 V6</title><style>
 :root{
   --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
   --brand:#85a5d6;--brand-dark:#607fae;--brand-soft:#edf3fa;--green:#16a34a;
@@ -67,7 +67,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .bundle-option{display:grid;grid-template-columns:1fr 78px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #eee}.bundle-option:last-child{border-bottom:0}
 .bundle-option input[type=number]{width:78px}
 .order-row{border:1px solid #edf0f4;border-radius:14px;padding:12px;margin-bottom:10px}.order-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.order-id{font-weight:800}.order-time{color:var(--muted);font-size:12px}.order-items{font-size:12px;color:#4b5563;margin-top:6px;line-height:1.7}
-.order-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}.status.ok{background:#ecfdf5;color:#166534}.status.cancelled{background:#f1f5f9;color:#475569}.status.refunded{background:#fff7ed;color:#9a3412}
+.order-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}.status.ok{background:#ecfdf5;color:#166534}.status.pending{background:#eff6ff;color:#1d4ed8}.status.cancelled{background:#f1f5f9;color:#475569}.status.refunded{background:#fff7ed;color:#9a3412}
 .author-stat{display:grid;grid-template-columns:1fr 90px 90px 90px;gap:8px;padding:8px 0;border-bottom:1px solid #eee;font-size:13px;align-items:center}.author-stat.head{font-size:11px;color:var(--muted);font-weight:700}.author-stat:last-child{border-bottom:0}
 .hidden{display:none!important}
 .login-card{width:min(440px,calc(100% - 28px));margin:11vh auto 0;background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--shadow)}
@@ -92,7 +92,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <div id="adminApp" class="hidden"><div class="admin-shell">
-  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台 V5</div><div style="font-size:12px;color:var(--muted);margin-top:4px">组合商品 · 退款/取消 · 作者分摊 · 净营业额</div></div><button class="btn" onclick="logoutAdmin()">退出登录</button></div>
+  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台 V6</div><div style="font-size:12px;color:var(--muted);margin-top:4px">订单确认 · 组合商品 · 退款/取消 · 作者分摊 · 净营业额</div></div><button class="btn" onclick="logoutAdmin()">退出登录</button></div>
   <div id="adminError" class="errorbox"></div>
 
   <div class="admin-grid">
@@ -139,6 +139,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
       <div class="panel" style="margin-bottom:16px">
         <h3 style="margin-top:0">今日营业</h3>
         <div class="stats">
+          <div class="stat"><span>待确认订单</span><b id="statPending">0</b></div>
           <div class="stat"><span>成交订单</span><b id="statOrders">0</b></div>
           <div class="stat"><span>销售总额</span><b id="statGross">¥0.00</b></div>
           <div class="stat refund"><span>退款金额</span><b id="statRefund">¥0.00</b></div>
@@ -153,7 +154,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
       <div class="panel" style="margin-bottom:16px"><div class="sheet-head"><h3>商品管理</h3><span id="productCount" style="font-size:12px;color:var(--muted)"></span></div><div id="adminProducts" class="admin-list"></div></div>
 
       <div class="panel"><div class="sheet-head"><h3>订单记录</h3><button class="btn small" onclick="exportOrders()">导出 CSV</button></div>
-        <div class="notice" style="margin-bottom:10px">“退款”在当前版本只记录账务状态，不会自动把微信/支付宝资金原路退回；实际退款仍需你在收款平台操作。</div>
+        <div class="notice" style="margin-bottom:10px">顾客提交后先进入“待确认”。只有后台点击“确认订单”后才计入销售；退款只记录账务状态，实际资金仍需在收款平台操作。</div>
         <div id="ordersList"></div></div>
     </section>
   </div>
@@ -177,7 +178,7 @@ async function loadAdminData(){
     sb.from('products').select('*').order('created_at',{ascending:false}),
     sb.from('bundle_components').select('*'),
     sb.from('shop_settings').select('*').eq('id',1).single(),
-    sb.from('orders').select('id,total,status,cancel_reason,cancelled_at,refund_reason,refund_amount,refunded_at,created_at,order_items(id,product_name,author,unit_price,quantity,line_total,product_type,bundle_snapshot,order_item_allocations(id,author,amount))').order('created_at',{ascending:false}).limit(1000)
+    sb.from('orders').select('id,total,status,confirmed_at,cancel_reason,cancelled_at,refund_reason,refund_amount,refunded_at,created_at,order_items(id,product_name,author,unit_price,quantity,line_total,product_type,bundle_snapshot,order_item_allocations(id,author,amount))').order('created_at',{ascending:false}).limit(1000)
   ]);
   if(p.error||c.error||s.error||o.error){showAdminError([p.error?.message,c.error?.message,s.error?.message,o.error?.message].filter(Boolean).join(' / '));return}
   products=p.data||[];bundleComponents=c.data||[];settings=s.data||{};orders=o.data||[];
@@ -221,30 +222,56 @@ async function saveBundle(){
 async function deleteProduct(id){const p=products.find(x=>x.id===id);if(!confirm(`确定删除“${p?.name||'这个商品'}”吗？`))return;try{const {error}=await sb.from('products').delete().eq('id',id);if(error)throw error;if(p?.image_path)await removeAsset(p.image_path);await loadAdminData()}catch(e){showAdminError('删除失败：'+e.message)}}
 function loadSettingsForm(){sName.value=settings.name||'';sSlogan.value=settings.slogan||'';sPaymentCaption.value=settings.payment_caption||'';oldQrPath.value=settings.qr_path||'';if(settings.qr_url){qrPreview.src=settings.qr_url;qrPreview.style.display='block'}else qrPreview.style.display='none';pendingQrFile=null}
 async function saveSettings(){try{let qr_path=settings.qr_path||null,qr_url=settings.qr_url||null;if(pendingQrFile){const up=await uploadAsset(pendingQrFile,'settings/payment-qr');if(qr_path)await removeAsset(qr_path);qr_path=up.path;qr_url=up.url}const {error}=await sb.from('shop_settings').upsert({id:1,name:sName.value.trim()||'摊位小店',slogan:sSlogan.value.trim(),payment_caption:sPaymentCaption.value.trim()||'请扫码付款',qr_path,qr_url,updated_at:new Date().toISOString()});if(error)throw error;await loadAdminData();alert('店铺设置已同步')}catch(e){showAdminError('保存失败：'+e.message)}}
-function statusLabel(s){return s==='cancelled'?'<span class="status cancelled">已取消</span>':s==='refunded'?'<span class="status refunded">已退款</span>':'<span class="status ok">已确认</span>'}
+function statusLabel(s){return s==='pending_confirmation'?'<span class="status pending">待确认</span>':s==='cancelled'?'<span class="status cancelled">已取消</span>':s==='refunded'?'<span class="status refunded">已退款</span>':'<span class="status ok">已确认</span>'}
 function renderOrders(){
-  ordersList.innerHTML=orders.length?orders.map(o=>`<div class="order-row"><div class="order-top"><div><div class="order-id">${esc(o.id.slice(0,8))} · ${money(o.total)} ${statusLabel(o.status)}</div><div class="order-time">${new Date(o.created_at).toLocaleString('zh-CN',{hour12:false})}</div></div></div>
+  const priority={pending_confirmation:0,confirmed:1,refunded:2,cancelled:3};
+  const list=[...orders].sort((a,b)=>(priority[a.status]??9)-(priority[b.status]??9)||new Date(b.created_at)-new Date(a.created_at));
+  ordersList.innerHTML=list.length?list.map(o=>`<div class="order-row"><div class="order-top"><div><div class="order-id">${esc(o.id.slice(0,8))} · ${money(o.total)} ${statusLabel(o.status)}</div><div class="order-time">${new Date(o.created_at).toLocaleString('zh-CN',{hour12:false})}</div></div></div>
   <div class="order-items">${(o.order_items||[]).map(i=>`${esc(i.product_name)}${i.product_type==='bundle'?' [组合]':''} ×${i.quantity}`).join('，')}</div>
+  ${o.status==='pending_confirmation'?`<div class="notice">这笔订单尚未计入销售额。请核实收款后再确认。</div>`:''}
+  ${o.status==='confirmed'&&o.confirmed_at?`<div class="notice">确认时间：${new Date(o.confirmed_at).toLocaleString('zh-CN',{hour12:false})}</div>`:''}
   ${o.status==='cancelled'?`<div class="notice">取消原因：${esc(o.cancel_reason||'未填写')}</div>`:''}
   ${o.status==='refunded'?`<div class="notice">全额退款：${money(o.refund_amount)} · 原因：${esc(o.refund_reason||'未填写')}</div>`:''}
-  ${o.status==='customer_confirmed'?`<div class="order-actions"><button class="btn small warn" onclick="cancelOrder('${o.id}')">取消订单</button><button class="btn small danger" onclick="refundOrder('${o.id}')">全额退款</button></div>`:''}</div>`).join(''):'<div class="empty">暂无订单</div>';
+  ${o.status==='pending_confirmation'?`<div class="order-actions"><button class="btn small primary" onclick="confirmOrder('${o.id}')">确认订单</button><button class="btn small warn" onclick="cancelOrder('${o.id}')">取消订单</button></div>`:''}
+  ${o.status==='confirmed'?`<div class="order-actions"><button class="btn small danger" onclick="refundOrder('${o.id}')">全额退款</button></div>`:''}
+  </div>`).join(''):'<div class="empty">暂无订单</div>';
 }
-async function cancelOrder(id){const reason=prompt('请输入取消订单原因：','顾客取消');if(reason===null)return;if(!confirm('确认取消这笔订单？取消后不会计入营业额。'))return;const {error}=await sb.rpc('admin_cancel_order',{p_order_id:id,p_reason:reason.trim()});if(error)showAdminError('取消失败：'+error.message);else await loadAdminData()}
+async function confirmOrder(id){if(!confirm('确认已经收到这笔订单的款项？\n确认后将计入销售总额、作者收入和净营业额。'))return;const {error}=await sb.rpc('admin_confirm_order',{p_order_id:id});if(error)showAdminError('确认失败：'+error.message);else await loadAdminData()}
+async function cancelOrder(id){const reason=prompt('请输入取消订单原因：','未收到付款 / 顾客取消');if(reason===null)return;if(!confirm('确认取消这笔待确认订单？'))return;const {error}=await sb.rpc('admin_cancel_order',{p_order_id:id,p_reason:reason.trim()});if(error)showAdminError('取消失败：'+error.message);else await loadAdminData()}
 async function refundOrder(id){const reason=prompt('请输入退款原因：','顾客退款');if(reason===null)return;if(!confirm('确认将该订单标记为“已全额退款”？\n注意：这只记录账务状态，不会自动从微信/支付宝退款。'))return;const {error}=await sb.rpc('admin_refund_order',{p_order_id:id,p_reason:reason.trim()});if(error)showAdminError('退款失败：'+error.message);else await loadAdminData()}
 function orderAllocation(o){const map={};(o.order_items||[]).forEach(i=>(i.order_item_allocations||[]).forEach(a=>{map[a.author]=(map[a.author]||0)+Number(a.amount||0)}));return map}
 function renderStats(){
   const now=new Date(),today=orders.filter(o=>{const d=new Date(o.created_at);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate()});
-  let gross=0,refund=0,cancelled=0,items=0,confirmedCount=0;const authors={};
-  today.forEach(o=>{if(o.status==='cancelled'){cancelled++;return}gross+=Number(o.total||0);confirmedCount++;if(o.status==='refunded')refund+=Number(o.refund_amount||o.total||0);(o.order_items||[]).forEach(i=>items+=Number(i.quantity||0));const alloc=orderAllocation(o);for(const [a,v] of Object.entries(alloc)){authors[a]??={gross:0,refund:0};authors[a].gross+=v;if(o.status==='refunded')authors[a].refund+=v}});
-  statOrders.textContent=confirmedCount;statGross.textContent=money(gross);statRefund.textContent=money(refund);statNet.textContent=money(gross-refund);statCancelled.textContent=cancelled;statItems.textContent=items;
-  authorStats.innerHTML=Object.entries(authors).sort((a,b)=>(b[1].gross-b[1].refund)-(a[1].gross-a[1].refund)).map(([a,v])=>`<div class="author-stat"><span>${esc(a)}</span><span>${money(v.gross)}</span><span>${money(v.refund)}</span><b>${money(v.gross-v.refund)}</b></div>`).join('')||'<div class="empty" style="padding:15px">今天还没有作者销售记录</div>';
+  let gross=0,refund=0,cancelled=0,pending=0,items=0,confirmedCount=0;const authors={};
+  today.forEach(o=>{
+    if(o.status==='pending_confirmation'){pending++;return}
+    if(o.status==='cancelled'){cancelled++;return}
+    if(o.status!=='confirmed'&&o.status!=='refunded')return;
+    gross+=Number(o.total||0);confirmedCount++;
+    if(o.status==='refunded')refund+=Number(o.refund_amount||o.total||0);
+    (o.order_items||[]).forEach(i=>items+=Number(i.quantity||0));
+    const alloc=orderAllocation(o);
+    for(const [a,v] of Object.entries(alloc)){authors[a]??={gross:0,refund:0};authors[a].gross+=v;if(o.status==='refunded')authors[a].refund+=v}
+  });
+  statPending.textContent=pending;statOrders.textContent=confirmedCount;statGross.textContent=money(gross);statRefund.textContent=money(refund);statNet.textContent=money(gross-refund);statCancelled.textContent=cancelled;statItems.textContent=items;
+  authorStats.innerHTML=Object.entries(authors).sort((a,b)=>(b[1].gross-b[1].refund)-(a[1].gross-a[1].refund)).map(([a,v])=>`<div class="author-stat"><span>${esc(a)}</span><span>${money(v.gross)}</span><span>${money(v.refund)}</span><b>${money(v.gross-v.refund)}</b></div>`).join('')||'<div class="empty" style="padding:15px">今天还没有已确认的作者销售记录</div>';
 }
 function exportOrders(){
   if(!orders.length){alert('暂无订单');return}
-  const rows=[['订单号','时间','状态','商品','类型','作者/组合','单价','数量','小计','退款金额','取消/退款原因']];
-  orders.forEach(o=>(o.order_items||[]).forEach(i=>rows.push([o.id,new Date(o.created_at).toLocaleString('zh-CN',{hour12:false}),o.status==='cancelled'?'已取消':o.status==='refunded'?'已退款':'已确认',i.product_name,i.product_type==='bundle'?'组合':'单品',i.author,i.unit_price,i.quantity,i.line_total,o.status==='refunded'?o.refund_amount:'',o.cancel_reason||o.refund_reason||''])));
-  let gross=0,refund=0,cancelled=0;const authors={};orders.forEach(o=>{if(o.status==='cancelled'){cancelled++;return}gross+=Number(o.total||0);if(o.status==='refunded')refund+=Number(o.refund_amount||o.total||0);const alloc=orderAllocation(o);for(const [a,v] of Object.entries(alloc)){authors[a]??={gross:0,refund:0};authors[a].gross+=v;if(o.status==='refunded')authors[a].refund+=v}});
-  rows.push([]);rows.push(['总体汇总']);rows.push(['销售总额',gross.toFixed(2)]);rows.push(['退款金额',refund.toFixed(2)]);rows.push(['净营业额',(gross-refund).toFixed(2)]);rows.push(['取消订单数',cancelled]);
+  const rows=[['订单号','下单时间','状态','确认时间','商品','类型','作者/组合','单价','数量','小计','退款金额','取消/退款原因']];
+  const statusText=s=>s==='pending_confirmation'?'待确认':s==='cancelled'?'已取消':s==='refunded'?'已退款':'已确认';
+  orders.forEach(o=>(o.order_items||[]).forEach(i=>rows.push([o.id,new Date(o.created_at).toLocaleString('zh-CN',{hour12:false}),statusText(o.status),o.confirmed_at?new Date(o.confirmed_at).toLocaleString('zh-CN',{hour12:false}):'',i.product_name,i.product_type==='bundle'?'组合':'单品',i.author,i.unit_price,i.quantity,i.line_total,o.status==='refunded'?o.refund_amount:'',o.cancel_reason||o.refund_reason||''])));
+  let gross=0,refund=0,cancelled=0,pending=0,confirmed=0;const authors={};
+  orders.forEach(o=>{
+    if(o.status==='pending_confirmation'){pending++;return}
+    if(o.status==='cancelled'){cancelled++;return}
+    if(o.status!=='confirmed'&&o.status!=='refunded')return;
+    gross+=Number(o.total||0);confirmed++;
+    if(o.status==='refunded')refund+=Number(o.refund_amount||o.total||0);
+    const alloc=orderAllocation(o);
+    for(const [a,v] of Object.entries(alloc)){authors[a]??={gross:0,refund:0};authors[a].gross+=v;if(o.status==='refunded')authors[a].refund+=v}
+  });
+  rows.push([]);rows.push(['总体汇总']);rows.push(['待确认订单数',pending]);rows.push(['成交订单数',confirmed]);rows.push(['销售总额',gross.toFixed(2)]);rows.push(['退款金额',refund.toFixed(2)]);rows.push(['净营业额',(gross-refund).toFixed(2)]);rows.push(['取消订单数',cancelled]);
   rows.push([]);rows.push(['作者收入分摊']);rows.push(['作者','销售额','退款额','净收入']);Object.entries(authors).forEach(([a,v])=>rows.push([a,v.gross.toFixed(2),v.refund.toFixed(2),(v.gross-v.refund).toFixed(2)]));
   const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`摊位订单_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
 }
