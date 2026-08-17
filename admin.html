@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#85a5d6"><title>摊主管理后台 V6</title><style>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#85a5d6"><title>摊主管理后台 V7</title><style>
 :root{
   --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
   --brand:#85a5d6;--brand-dark:#607fae;--brand-soft:#edf3fa;--green:#16a34a;
@@ -72,6 +72,13 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .hidden{display:none!important}
 .login-card{width:min(440px,calc(100% - 28px));margin:11vh auto 0;background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--shadow)}
 .login-card h1{margin:0 0 7px;font-size:24px}.login-card p{color:var(--muted);font-size:13px;line-height:1.65}
+
+.tag-list{display:flex;gap:5px;flex-wrap:wrap}
+.tag{display:inline-flex;align-items:center;background:#eef3f8;color:#52606d;padding:4px 7px;border-radius:999px;font-size:10px;font-weight:700}
+.limit-note{font-size:11px;color:#b45309;font-weight:700}
+.filter-group{margin-bottom:8px}
+.filter-label{font-size:11px;color:var(--muted);font-weight:800;margin:0 0 6px 2px}
+
 @media(max-width:900px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 75px 75px 75px}}
 @media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 64px 64px 64px;font-size:11px}}
 </style></head>
@@ -92,7 +99,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <div id="adminApp" class="hidden"><div class="admin-shell">
-  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台 V6</div><div style="font-size:12px;color:var(--muted);margin-top:4px">订单确认 · 组合商品 · 退款/取消 · 作者分摊 · 净营业额</div></div><button class="btn" onclick="logoutAdmin()">退出登录</button></div>
+  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台 V7</div><div style="font-size:12px;color:var(--muted);margin-top:4px">多标签 · 每单限购 · 订单确认 · 组合商品 · 作者分摊</div></div><button class="btn" onclick="logoutAdmin()">退出登录</button></div>
   <div id="adminError" class="errorbox"></div>
 
   <div class="admin-grid">
@@ -106,7 +113,9 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
       <div id="productForm">
         <h3 id="formTitle">新增单品</h3><input type="hidden" id="editId"><input type="hidden" id="oldImagePath">
         <div class="field"><label>商品名称</label><input id="pName"></div>
-        <div class="field"><label>作者 / 标签</label><input id="pAuthor"></div>
+        <div class="field"><label>作者</label><input id="pAuthor" placeholder="作者只能填写一个，用于收入统计"></div>
+        <div class="field"><label>标签（可多个）</label><input id="pTags" placeholder="例如：钥匙扣, 蓝色, 新品"></div>
+        <div class="field"><label>每单限购</label><input id="pLimit" type="number" min="0" step="1" placeholder="0 或留空 = 不限购"></div>
         <div class="field"><label>价格（元）</label><input id="pPrice" type="number" min="0" step="0.01"></div>
         <div class="field"><label>简介</label><textarea id="pDesc"></textarea></div>
         <div class="field"><label>商品图片</label><input id="pImage" type="file" accept="image/*" onchange="previewProduct(event)"><img id="pPreview" class="preview"></div>
@@ -118,6 +127,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
         <h3 id="bundleFormTitle">新增组合商品</h3><input type="hidden" id="bundleEditId"><input type="hidden" id="bundleOldImagePath">
         <div class="field"><label>组合名称</label><input id="bName" placeholder="例如：夏日套装"></div>
         <div class="field"><label>组合售价（元）</label><input id="bPrice" type="number" min="0" step="0.01"></div>
+        <div class="field"><label>标签（可多个）</label><input id="bTags" placeholder="例如：套装, 限定, 推荐"></div>
+        <div class="field"><label>每单限购</label><input id="bLimit" type="number" min="0" step="1" placeholder="0 或留空 = 不限购"></div>
         <div class="field"><label>简介</label><textarea id="bDesc"></textarea></div>
         <div class="field"><label>组合图片</label><input id="bImage" type="file" accept="image/*" onchange="previewBundle(event)"><img id="bPreview" class="preview"></div>
         <div class="field"><label>选择组合内容与数量</label><div id="bundleOptions"></div></div>
@@ -188,33 +199,35 @@ function switchTab(t){for(const x of ['product','bundle','shop'])document.getEle
 function renderProducts(){
   productCount.textContent=`共 ${products.length} 件（含组合）`;adminProducts.innerHTML=products.length?products.map(p=>`
   <div class="admin-product">${p.image_url?`<img src="${esc(p.image_url)}">`:`<div class="mini-ph">${p.product_type==='bundle'?'🎁':authorEmoji(p.author)}</div>`}
-  <div><div class="name">${esc(p.name)} ${p.product_type==='bundle'?'<span style="font-size:11px;color:#4f46e5">[组合]</span>':''} ${p.is_active?'':'<span style="color:#9ca3af;font-size:11px">（已隐藏）</span>'}</div><div class="meta">${p.product_type==='bundle'?'组合商品':esc(p.author)} · ${money(p.price)}</div></div>
+  <div><div class="name">${esc(p.name)} ${p.product_type==='bundle'?'<span style="font-size:11px;color:#4f46e5">[组合]</span>':''} ${p.is_active?'':'<span style="color:#9ca3af;font-size:11px">（已隐藏）</span>'}</div><div class="meta">${p.product_type==='bundle'?'组合商品':esc(p.author)} · ${money(p.price)}${Number(p.max_per_order||0)>0?` · 每单限购${p.max_per_order}`:''}</div>${(p.tags||[]).length?`<div class="tag-list" style="margin-top:5px">${p.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>
   <div class="admin-actions"><button class="btn small" onclick="${p.product_type==='bundle'?`editBundle('${p.id}')`:`editProduct('${p.id}')`}">编辑</button><button class="btn small danger" onclick="deleteProduct('${p.id}')">删除</button></div></div>`).join(''):'<div class="empty">还没有商品</div>';
 }
-function editProduct(id){const p=products.find(x=>x.id===id);if(!p)return;switchTab('product');editId.value=p.id;pName.value=p.name;pAuthor.value=p.author;pPrice.value=p.price;pDesc.value=p.description||'';pActive.checked=!!p.is_active;oldImagePath.value=p.image_path||'';if(p.image_url){pPreview.src=p.image_url;pPreview.style.display='block'}else pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='编辑单品';cancelEdit.classList.remove('hidden')}
-function resetProductForm(){editId.value='';pName.value='';pAuthor.value='';pPrice.value='';pDesc.value='';pActive.checked=true;oldImagePath.value='';pImage.value='';pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='新增单品';cancelEdit.classList.add('hidden')}
+function editProduct(id){const p=products.find(x=>x.id===id);if(!p)return;switchTab('product');editId.value=p.id;pName.value=p.name;pAuthor.value=p.author;pTags.value=(p.tags||[]).join(', ');pLimit.value=p.max_per_order||'';pPrice.value=p.price;pDesc.value=p.description||'';pActive.checked=!!p.is_active;oldImagePath.value=p.image_path||'';if(p.image_url){pPreview.src=p.image_url;pPreview.style.display='block'}else pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='编辑单品';cancelEdit.classList.remove('hidden')}
+function resetProductForm(){editId.value='';pName.value='';pAuthor.value='';pTags.value='';pLimit.value='';pPrice.value='';pDesc.value='';pActive.checked=true;oldImagePath.value='';pImage.value='';pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='新增单品';cancelEdit.classList.add('hidden')}
 function previewProduct(e){const f=e.target.files?.[0];if(!f)return;pendingProductFile=f;pPreview.src=URL.createObjectURL(f);pPreview.style.display='block'}function previewBundle(e){const f=e.target.files?.[0];if(!f)return;pendingBundleFile=f;bPreview.src=URL.createObjectURL(f);bPreview.style.display='block'}function previewQR(e){const f=e.target.files?.[0];if(!f)return;pendingQrFile=f;qrPreview.src=URL.createObjectURL(f);qrPreview.style.display='block'}
 function safeExt(f){return (f.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg'}
 async function uploadAsset(file,pathBase){const path=`${pathBase}-${Date.now()}.${safeExt(file)}`;const {error}=await sb.storage.from('shop-assets').upload(path,file,{cacheControl:'3600'});if(error)throw error;return {path,url:sb.storage.from('shop-assets').getPublicUrl(path).data.publicUrl}}
 async function removeAsset(path){if(path)await sb.storage.from('shop-assets').remove([path])}
+function parseTags(v){return [...new Set(String(v||'').split(/[,，]/).map(x=>x.trim()).filter(Boolean))].slice(0,20)}
+function normalizeLimit(v){const n=Math.floor(Number(v||0));return Number.isFinite(n)&&n>0?Math.min(n,999):null}
 async function saveProduct(){
   const id=editId.value||crypto.randomUUID(),name=pName.value.trim(),author=pAuthor.value.trim(),price=Number(pPrice.value);if(!name||!author||!(price>=0)){showAdminError('请填写商品名称、作者和正确价格。');return}
   let image_path=oldImagePath.value||null,image_url=products.find(x=>x.id===editId.value)?.image_url||null;
   try{if(pendingProductFile){const up=await uploadAsset(pendingProductFile,`products/${id}`);if(image_path)await removeAsset(image_path);image_path=up.path;image_url=up.url}
-  const {error}=await sb.from('products').upsert({id,name,author,price:Number(price.toFixed(2)),description:pDesc.value.trim(),image_path,image_url,is_active:pActive.checked,product_type:'single',updated_at:new Date().toISOString()});if(error)throw error;resetProductForm();await loadAdminData()}catch(e){showAdminError('保存单品失败：'+e.message)}
+  const {error}=await sb.from('products').upsert({id,name,author,price:Number(price.toFixed(2)),description:pDesc.value.trim(),tags:parseTags(pTags.value),max_per_order:normalizeLimit(pLimit.value),image_path,image_url,is_active:pActive.checked,product_type:'single',updated_at:new Date().toISOString()});if(error)throw error;resetProductForm();await loadAdminData()}catch(e){showAdminError('保存单品失败：'+e.message)}
 }
 function renderBundleOptions(selected={}){
   const singles=products.filter(p=>p.product_type!=='bundle');bundleOptions.innerHTML=singles.length?singles.map(p=>`<div class="bundle-option"><label><input type="checkbox" class="bundle-check" data-id="${p.id}" ${selected[p.id]?'checked':''}> ${esc(p.name)} <span style="color:var(--muted)">(${esc(p.author)} · ${money(p.price)})</span></label><input type="number" min="1" value="${selected[p.id]||1}" class="bundle-qty" data-id="${p.id}" onchange="updateBundleOriginal()" oninput="updateBundleOriginal()"></div>`).join(''):'<div class="notice">请先创建至少一个单品。</div>';
   document.querySelectorAll('.bundle-check').forEach(x=>x.addEventListener('change',updateBundleOriginal));updateBundleOriginal();
 }
 function updateBundleOriginal(){let total=0;document.querySelectorAll('.bundle-check:checked').forEach(c=>{const p=products.find(x=>x.id===c.dataset.id),q=Number(document.querySelector(`.bundle-qty[data-id="${c.dataset.id}"]`)?.value||1);if(p)total+=Number(p.price)*q});bundleOriginalPrice.textContent='组合原价合计：'+money(total)}
-function editBundle(id){const p=products.find(x=>x.id===id);if(!p)return;switchTab('bundle');bundleEditId.value=p.id;bName.value=p.name;bPrice.value=p.price;bDesc.value=p.description||'';bActive.checked=!!p.is_active;bundleOldImagePath.value=p.image_path||'';if(p.image_url){bPreview.src=p.image_url;bPreview.style.display='block'}else bPreview.style.display='none';pendingBundleFile=null;const sel={};bundleComponents.filter(x=>x.bundle_product_id===id).forEach(x=>sel[x.component_product_id]=x.quantity);renderBundleOptions(sel);bundleFormTitle.textContent='编辑组合商品';cancelBundleEdit.classList.remove('hidden')}
-function resetBundleForm(){bundleEditId.value='';bName.value='';bPrice.value='';bDesc.value='';bActive.checked=true;bundleOldImagePath.value='';bImage.value='';bPreview.style.display='none';pendingBundleFile=null;bundleFormTitle.textContent='新增组合商品';cancelBundleEdit.classList.add('hidden');renderBundleOptions()}
+function editBundle(id){const p=products.find(x=>x.id===id);if(!p)return;switchTab('bundle');bundleEditId.value=p.id;bName.value=p.name;bPrice.value=p.price;bTags.value=(p.tags||[]).join(', ');bLimit.value=p.max_per_order||'';bDesc.value=p.description||'';bActive.checked=!!p.is_active;bundleOldImagePath.value=p.image_path||'';if(p.image_url){bPreview.src=p.image_url;bPreview.style.display='block'}else bPreview.style.display='none';pendingBundleFile=null;const sel={};bundleComponents.filter(x=>x.bundle_product_id===id).forEach(x=>sel[x.component_product_id]=x.quantity);renderBundleOptions(sel);bundleFormTitle.textContent='编辑组合商品';cancelBundleEdit.classList.remove('hidden')}
+function resetBundleForm(){bundleEditId.value='';bName.value='';bPrice.value='';bTags.value='';bLimit.value='';bDesc.value='';bActive.checked=true;bundleOldImagePath.value='';bImage.value='';bPreview.style.display='none';pendingBundleFile=null;bundleFormTitle.textContent='新增组合商品';cancelBundleEdit.classList.add('hidden');renderBundleOptions()}
 async function saveBundle(){
   const id=bundleEditId.value||crypto.randomUUID(),name=bName.value.trim(),price=Number(bPrice.value);const components=[];document.querySelectorAll('.bundle-check:checked').forEach(c=>{const q=Math.max(1,Number(document.querySelector(`.bundle-qty[data-id="${c.dataset.id}"]`)?.value||1));components.push({bundle_product_id:id,component_product_id:c.dataset.id,quantity:q})});if(!name||!(price>=0)||!components.length){showAdminError('组合商品需要名称、正确售价，并至少选择一个单品。');return}
   let image_path=bundleOldImagePath.value||null,image_url=products.find(x=>x.id===bundleEditId.value)?.image_url||null;
   try{if(pendingBundleFile){const up=await uploadAsset(pendingBundleFile,`bundles/${id}`);if(image_path)await removeAsset(image_path);image_path=up.path;image_url=up.url}
-    const {error}=await sb.from('products').upsert({id,name,author:'组合商品',price:Number(price.toFixed(2)),description:bDesc.value.trim(),image_path,image_url,is_active:bActive.checked,product_type:'bundle',updated_at:new Date().toISOString()});if(error)throw error;
+    const {error}=await sb.from('products').upsert({id,name,author:'组合商品',price:Number(price.toFixed(2)),description:bDesc.value.trim(),tags:parseTags(bTags.value),max_per_order:normalizeLimit(bLimit.value),image_path,image_url,is_active:bActive.checked,product_type:'bundle',updated_at:new Date().toISOString()});if(error)throw error;
     const del=await sb.from('bundle_components').delete().eq('bundle_product_id',id);if(del.error)throw del.error;const ins=await sb.from('bundle_components').insert(components);if(ins.error)throw ins.error;
     resetBundleForm();await loadAdminData();
   }catch(e){showAdminError('保存组合商品失败：'+e.message)}
