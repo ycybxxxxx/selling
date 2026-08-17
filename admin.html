@@ -94,6 +94,13 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .tag-order-actions{display:flex;gap:5px}
 .tag-order-actions button{width:32px;height:30px;border:1px solid var(--line);background:#fff;border-radius:8px;font-weight:800}
 
+
+.product-filter-bar{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px}
+.product-filter-btn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:750}
+.product-filter-btn.active{background:var(--brand);border-color:var(--brand);color:#fff}
+.status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}
+.status-dot.on{background:#16a34a}.status-dot.off{background:#94a3b8}
+
 @media(max-width:900px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 75px 75px 75px}}
 @media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 64px 64px 64px;font-size:11px}}
 </style></head>
@@ -114,7 +121,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <div id="adminApp" class="hidden"><div class="admin-shell">
-  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台</div><div style="font-size:12px;color:var(--muted);margin-top:4px">标签排序 · 纯数字订单号 · 实时订单 · 库存 · 组合商品</div></div><div style="display:flex;align-items:center;gap:8px"><span id="livePill" class="live-pill">● 正在连接实时订单</span><button class="btn" onclick="logoutAdmin()">退出登录</button></div></div>
+  <div class="admin-head"><div><div style="font-size:23px;font-weight:900">摊主管理后台</div><div style="font-size:12px;color:var(--muted);margin-top:4px">安全下架 · 商品筛选 · 标签排序 · 实时订单 · 库存</div></div><div style="display:flex;align-items:center;gap:8px"><span id="livePill" class="live-pill">● 正在连接实时订单</span><button class="btn" onclick="logoutAdmin()">退出登录</button></div></div>
   <div id="adminError" class="errorbox"></div>
 
   <div class="admin-grid">
@@ -189,7 +196,15 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
         <div class="notice" style="margin-bottom:10px">顾客提交后会获得订单号。可让顾客出示订单号核对付款；只有点击“确认订单”后才计入销售。</div>
         <div id="ordersList"></div></div>
 
-      <div class="panel" style="margin-bottom:16px"><div class="sheet-head"><h3>商品管理</h3><span id="productCount" style="font-size:12px;color:var(--muted)"></span></div><div id="adminProducts" class="admin-list"></div></div>
+      <div class="panel" style="margin-bottom:16px">
+        <div class="sheet-head"><h3>商品管理</h3><span id="productCount" style="font-size:12px;color:var(--muted)"></span></div>
+        <div class="product-filter-bar">
+          <button id="productFilterActive" class="product-filter-btn active" onclick="setProductFilter('active')">在售</button>
+          <button id="productFilterInactive" class="product-filter-btn" onclick="setProductFilter('inactive')">已下架</button>
+          <button id="productFilterAll" class="product-filter-btn" onclick="setProductFilter('all')">全部</button>
+        </div>
+        <div id="adminProducts" class="admin-list"></div>
+      </div>
     </section>
   </div>
 </div></div>
@@ -199,7 +214,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 <script>
 const SUPABASE_URL="https://okgnpgamahaucmvyquzx.supabase.co",SUPABASE_KEY="sb_publishable_guo63tjKVNsIplXZ5bdGuQ_Z6FdzACy",FIXED_PIN='30102';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let products=[],bundleComponents=[],orders=[],settings={},tagOrder=[],pendingProductFile=null,pendingBundleFile=null,pendingQrFile=null;
+let products=[],bundleComponents=[],orders=[],settings={},tagOrder=[],productFilter='active',pendingProductFile=null,pendingBundleFile=null,pendingQrFile=null;
 function money(n){return '¥'+Number(n||0).toFixed(2)}
 function orderNo(n){return String(n??'')}function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
 function authorEmoji(name){const a=['🎨','🧵','🌿','✨','🧸','🍀','🌙','🪄'];let s=0;for(const c of String(name))s+=c.charCodeAt(0);return a[s%a.length]}
@@ -262,11 +277,39 @@ function inventoryLabel(p){
   if(s==null)return '库存不限';
   return p.product_type==='bundle'?`组合可售 ${s}`:`库存 ${s}`;
 }
+function setProductFilter(mode){
+  productFilter=mode;
+  productFilterActive.classList.toggle('active',mode==='active');
+  productFilterInactive.classList.toggle('active',mode==='inactive');
+  productFilterAll.classList.toggle('active',mode==='all');
+  renderProducts();
+}
 function renderProducts(){
-  productCount.textContent=`共 ${products.length} 件（含组合）`;adminProducts.innerHTML=products.length?products.map(p=>`
-  <div class="admin-product">${p.image_url?`<img src="${esc(p.image_url)}">`:`<div class="mini-ph">${p.product_type==='bundle'?'🎁':authorEmoji(p.author)}</div>`}
-  <div><div class="name">${esc(p.name)} ${p.product_type==='bundle'?'<span style="font-size:11px;color:#4f46e5">[组合]</span>':''} ${p.is_active?'':'<span style="color:#9ca3af;font-size:11px">（已隐藏）</span>'}</div><div class="meta">${p.product_type==='bundle'?'组合商品':esc(p.author)} · ${money(p.price)}${Number(p.max_per_order||0)>0?` · 每单限购${p.max_per_order}`:''} · ${inventoryLabel(p)}</div>${(p.tags||[]).length?`<div class="tag-list" style="margin-top:5px">${p.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>
-  <div class="admin-actions"><button class="btn small" onclick="${p.product_type==='bundle'?`editBundle('${p.id}')`:`editProduct('${p.id}')`}">编辑</button><button class="btn small danger" onclick="deleteProduct('${p.id}')">删除</button></div></div>`).join(''):'<div class="empty">还没有商品</div>';
+  const visible=products.filter(p=>productFilter==='all'||(productFilter==='active'?p.is_active:!p.is_active));
+  const activeCount=products.filter(p=>p.is_active).length;
+  const inactiveCount=products.length-activeCount;
+  productCount.textContent=`在售 ${activeCount} · 已下架 ${inactiveCount} · 共 ${products.length}`;
+
+  adminProducts.innerHTML=visible.length?visible.map(p=>`
+  <div class="admin-product">
+    ${p.image_url?`<img src="${esc(p.image_url)}">`:`<div class="mini-ph">${p.product_type==='bundle'?'🎁':authorEmoji(p.author)}</div>`}
+    <div>
+      <div class="name">
+        <span class="status-dot ${p.is_active?'on':'off'}"></span>${esc(p.name)}
+        ${p.product_type==='bundle'?'<span style="font-size:11px;color:#4f46e5">[组合]</span>':''}
+        ${p.is_active?'':'<span style="color:#64748b;font-size:11px">（已下架）</span>'}
+      </div>
+      <div class="meta">${p.product_type==='bundle'?'组合商品':esc(p.author)} · ${money(p.price)}${Number(p.max_per_order||0)>0?` · 每单限购${p.max_per_order}`:''} · ${inventoryLabel(p)}</div>
+      ${(p.tags||[]).length?`<div class="tag-list" style="margin-top:5px">${p.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}
+    </div>
+    <div class="admin-actions">
+      <button class="btn small" onclick="${p.product_type==='bundle'?`editBundle('${p.id}')`:`editProduct('${p.id}')`}">编辑</button>
+      ${p.is_active
+        ? `<button class="btn small warn" onclick="archiveProduct('${p.id}')">下架</button>`
+        : `<button class="btn small primary" onclick="restoreProduct('${p.id}')">重新上架</button>
+           <button class="btn small danger" onclick="permanentDeleteProduct('${p.id}')">永久删除</button>`}
+    </div>
+  </div>`).join(''):'<div class="empty">当前筛选下没有商品</div>';
 }
 function editProduct(id){const p=products.find(x=>x.id===id);if(!p)return;switchTab('product');editId.value=p.id;pName.value=p.name;pAuthor.value=p.author;pTags.value=(p.tags||[]).join(', ');pLimit.value=p.max_per_order||'';pStock.value=p.stock_qty==null?'':p.stock_qty;pPrice.value=p.price;pDesc.value=p.description||'';pActive.checked=!!p.is_active;oldImagePath.value=p.image_path||'';if(p.image_url){pPreview.src=p.image_url;pPreview.style.display='block'}else pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='编辑单品';cancelEdit.classList.remove('hidden')}
 function resetProductForm(){editId.value='';pName.value='';pAuthor.value='';pTags.value='';pLimit.value='';pStock.value='';pPrice.value='';pDesc.value='';pActive.checked=true;oldImagePath.value='';pImage.value='';pPreview.style.display='none';pendingProductFile=null;formTitle.textContent='新增单品';cancelEdit.classList.add('hidden')}
@@ -307,7 +350,40 @@ async function saveBundle(){
     resetBundleForm();await loadAdminData();
   }catch(e){showAdminError('保存组合商品失败：'+e.message)}
 }
-async function deleteProduct(id){const p=products.find(x=>x.id===id);if(!confirm(`确定删除“${p?.name||'这个商品'}”吗？`))return;try{const {error}=await sb.from('products').delete().eq('id',id);if(error)throw error;if(p?.image_path)await removeAsset(p.image_path);await loadAdminData()}catch(e){showAdminError('删除失败：'+e.message)}}
+async function archiveProduct(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  if(!confirm(`确定下架“${p.name}”吗？\n\n下架后顾客端将看不到它，但历史订单、退款和库存记录都会保留。`))return;
+  const {error}=await sb.from('products').update({is_active:false,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error){showAdminError('下架失败：'+error.message);return}
+  await loadAdminData();
+}
+async function restoreProduct(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  const {error}=await sb.from('products').update({is_active:true,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error){showAdminError('重新上架失败：'+error.message);return}
+  await loadAdminData();
+}
+async function permanentDeleteProduct(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  if(p.is_active){
+    alert('请先下架商品，再执行永久删除。');
+    return;
+  }
+  if(!confirm(`永久删除“${p.name}”？\n\n只有从未产生订单、没有库存预留、也未被组合商品引用的商品才能永久删除。此操作不可恢复。`))return;
+
+  const {data,error}=await sb.rpc('admin_permanently_delete_product',{p_product_id:id});
+  if(error){
+    showAdminError('永久删除失败：'+error.message);
+    return;
+  }
+
+  if(data?.image_path){
+    try{await removeAsset(data.image_path)}catch(e){}
+  }
+  resetProductForm();
+  resetBundleForm();
+  await loadAdminData();
+}
 function loadSettingsForm(){
   sName.value=settings.name||'';
   sSlogan.value=settings.slogan||'';
