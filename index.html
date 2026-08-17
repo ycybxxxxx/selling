@@ -103,9 +103,9 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
   <div class="sheet"><div class="sheet-head"><h2>扫码买单</h2><button class="close" onclick="closeOverlay('checkoutOverlay')">×</button></div>
   <div class="order-summary" id="checkoutSummary"></div><div class="qr-box" id="qrBox"></div>
   <p style="text-align:center;color:var(--muted);font-size:13px" id="paymentCaption">请扫码付款</p>
-  <div class="errorbox" id="checkoutError"></div><div class="success" id="paySuccess">订单已经同步到云端，谢谢惠顾！</div>
+  <div class="errorbox" id="checkoutError"></div><div class="success" id="paySuccess">订单已提交，正在等待摊主确认。确认后才会计入正式销售记录。</div>
   <button class="checkout-btn" id="paidBtn" onclick="confirmPaid()">我已完成付款</button>
-  <div class="notice">当前仍由顾客点击“我已完成付款”确认，系统不会自动判断微信/支付宝是否实际到账。</div></div>
+  <div class="notice">点击“我已完成付款”只会生成“待确认”订单。摊主核实收款后在后台确认，订单才会计入销售额。</div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
