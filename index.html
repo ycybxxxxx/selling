@@ -9,7 +9,7 @@
 :root{
   --bg:#f6f8fc;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#dce5f2;
   --brand:#85a5d6;--brand-dark:#607fae;--brand-soft:#edf3fa;--green:#16a34a;
-  --red:#dc2626;--shadow:0 10px 28px rgba(66,94,135,.10)
+  --red:#dc2626;--amber:#b45309;--shadow:0 10px 28px rgba(66,94,135,.10)
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
@@ -30,12 +30,15 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .placeholder{aspect-ratio:1/1;display:grid;place-items:center;background:linear-gradient(135deg,#eaf1fa,#dbe7f5);font-size:46px}
 .product-body{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1}
 .author{display:inline-flex;align-self:flex-start;background:#f3f4f6;color:#4b5563;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:750}
+.bundle-tag{background:#eef2ff;color:#4f46e5}
 .product-title{font-weight:850;line-height:1.35}.product-desc{font-size:12px;color:var(--muted);line-height:1.45;min-height:34px}
+.bundle-components{font-size:11px;color:#64748b;line-height:1.55;background:#f8fafc;border-radius:10px;padding:8px}
 .product-foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;gap:8px}
 .price{font-size:19px;font-weight:900;color:var(--brand-dark)}
 .add-btn{width:36px;height:36px;border:0;border-radius:12px;background:var(--brand);color:#fff;font-size:22px;font-weight:700}
 .btn{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:12px;padding:9px 13px;font-weight:700}
-.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn.small{padding:7px 10px;font-size:13px}.btn.danger{color:var(--red)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn.small{padding:7px 10px;font-size:13px}
+.btn.danger{color:var(--red)}.btn.warn{color:var(--amber)}
 .cart-fab{position:fixed;right:18px;bottom:20px;z-index:40;border:0;background:var(--text);color:#fff;border-radius:18px;padding:13px 17px;display:flex;align-items:center;gap:9px;font-weight:800;box-shadow:0 14px 34px rgba(0,0,0,.2)}
 .badge{min-width:22px;height:22px;border-radius:999px;background:var(--brand);display:grid;place-items:center;font-size:12px;padding:0 6px}
 .overlay{position:fixed;inset:0;background:rgba(17,24,39,.42);z-index:50;display:none;align-items:flex-end;justify-content:center}.overlay.show{display:flex}
@@ -59,33 +62,30 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .field textarea{min-height:76px;resize:vertical}
 .panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow)}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.stat{background:#f9fafb;border-radius:13px;padding:12px}.stat span{font-size:11px;color:var(--muted)}.stat b{display:block;font-size:20px;margin-top:4px}
-.admin-shell{width:min(1080px,100%);margin:auto;padding:18px 16px 60px}.admin-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
-.admin-grid{display:grid;grid-template-columns:340px 1fr;gap:16px}.tabs{display:flex;gap:8px;margin-bottom:14px}.tab{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 11px;font-weight:700}.tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
+.stat.net{background:#eef6ff}.stat.refund{background:#fff7ed}.stat.cancel{background:#f8fafc}
+.admin-shell{width:min(1180px,100%);margin:auto;padding:18px 16px 60px}.admin-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.admin-grid{display:grid;grid-template-columns:360px 1fr;gap:16px}.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 11px;font-weight:700}.tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
 .preview{width:100%;aspect-ratio:16/10;border:1px dashed var(--line);border-radius:14px;object-fit:cover;background:var(--brand-soft);display:none;margin-top:8px}
 .admin-list{display:flex;flex-direction:column;gap:10px}.admin-product{display:grid;grid-template-columns:68px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:10px}
 .admin-product img,.mini-ph{width:68px;height:68px;border-radius:11px;object-fit:cover;background:var(--brand-soft)}.mini-ph{display:grid;place-items:center;font-size:28px}
 .admin-product .name{font-weight:800}.admin-product .meta{font-size:12px;color:var(--muted);margin-top:4px}.admin-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.order-row{border-bottom:1px solid #eee;padding:12px 0}.order-row:last-child{border-bottom:0}.order-top{display:flex;justify-content:space-between;gap:12px}.order-id{font-weight:800}.order-time{color:var(--muted);font-size:12px}.order-items{font-size:12px;color:#4b5563;margin-top:5px;line-height:1.6}
-.author-stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;font-size:13px}.author-stat:last-child{border-bottom:0}
+.bundle-option{display:grid;grid-template-columns:1fr 78px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #eee}.bundle-option:last-child{border-bottom:0}
+.bundle-option input[type=number]{width:78px}
+.order-row{border:1px solid #edf0f4;border-radius:14px;padding:12px;margin-bottom:10px}.order-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.order-id{font-weight:800}.order-time{color:var(--muted);font-size:12px}.order-items{font-size:12px;color:#4b5563;margin-top:6px;line-height:1.7}
+.order-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}.status.ok{background:#ecfdf5;color:#166534}.status.cancelled{background:#f1f5f9;color:#475569}.status.refunded{background:#fff7ed;color:#9a3412}
+.author-stat{display:grid;grid-template-columns:1fr 90px 90px 90px;gap:8px;padding:8px 0;border-bottom:1px solid #eee;font-size:13px;align-items:center}.author-stat.head{font-size:11px;color:var(--muted);font-weight:700}.author-stat:last-child{border-bottom:0}
 .hidden{display:none!important}
 .login-card{width:min(440px,calc(100% - 28px));margin:11vh auto 0;background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--shadow)}
 .login-card h1{margin:0 0 7px;font-size:24px}.login-card p{color:var(--muted);font-size:13px;line-height:1.65}
-@media(max-width:820px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}}
-@media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}}
+@media(max-width:900px){.product-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 75px 75px 75px}}
+@media(max-width:430px){.container{padding-left:12px;padding-right:12px}.hero{padding:18px}.hero h1{font-size:24px}.product-grid{gap:10px}.product-body{padding:10px}.product-desc{min-height:0}.admin-product{grid-template-columns:56px 1fr}.admin-product img,.mini-ph{width:56px;height:56px}.admin-actions{grid-column:1/-1;justify-content:flex-start}.stats{grid-template-columns:1fr}.author-stat{grid-template-columns:1fr 64px 64px 64px;font-size:11px}}
 </style>
 </head>
 <body>
-<header class="topbar">
-  <div class="topbar-inner">
-    <div class="brand"><div class="brand-dot">店</div><span id="shopNameTop">摊位小店</span></div>
-  </div>
-</header>
+<header class="topbar"><div class="topbar-inner"><div class="brand"><div class="brand-dot">店</div><span id="shopNameTop">摊位小店</span></div></div></header>
 
 <main class="container">
-  <section class="hero">
-    <h1 id="shopNameHero">摊位小店</h1>
-    <p id="shopSlogan">正在加载店铺信息…</p>
-  </section>
+  <section class="hero"><h1 id="shopNameHero">摊位小店</h1><p id="shopSlogan">正在加载店铺信息…</p></section>
   <div id="loadError" class="errorbox"></div>
   <div id="authorFilters" class="filters"></div>
   <section id="productGrid" class="product-grid"><div class="loading" style="grid-column:1/-1">正在从云端加载商品…</div></section>
@@ -94,25 +94,18 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 <button class="cart-fab" onclick="openCart()">🛒 购物车 <span class="badge" id="cartCount">0</span></button>
 
 <div id="cartOverlay" class="overlay" onclick="overlayClose(event,'cartOverlay')">
-  <div class="sheet">
-    <div class="sheet-head"><h2>购物车</h2><button class="close" onclick="closeOverlay('cartOverlay')">×</button></div>
-    <div id="cartItems"></div>
-    <div class="total-line"><span>合计</span><strong id="cartTotal">¥0.00</strong></div>
-    <button class="checkout-btn" onclick="openCheckout()">去买单</button>
-  </div>
+  <div class="sheet"><div class="sheet-head"><h2>购物车</h2><button class="close" onclick="closeOverlay('cartOverlay')">×</button></div>
+  <div id="cartItems"></div><div class="total-line"><span>合计</span><strong id="cartTotal">¥0.00</strong></div>
+  <button class="checkout-btn" onclick="openCheckout()">去买单</button></div>
 </div>
 
 <div id="checkoutOverlay" class="overlay" onclick="overlayClose(event,'checkoutOverlay')">
-  <div class="sheet">
-    <div class="sheet-head"><h2>扫码买单</h2><button class="close" onclick="closeOverlay('checkoutOverlay')">×</button></div>
-    <div class="order-summary" id="checkoutSummary"></div>
-    <div class="qr-box" id="qrBox"></div>
-    <p style="text-align:center;color:var(--muted);font-size:13px" id="paymentCaption">请扫码付款</p>
-    <div class="errorbox" id="checkoutError"></div>
-    <div class="success" id="paySuccess">订单已经同步到云端，谢谢惠顾！</div>
-    <button class="checkout-btn" id="paidBtn" onclick="confirmPaid()">我已完成付款</button>
-    <div class="notice">当前仍由顾客点击“我已完成付款”确认，网站不会自动判断微信/支付宝是否实际到账。</div>
-  </div>
+  <div class="sheet"><div class="sheet-head"><h2>扫码买单</h2><button class="close" onclick="closeOverlay('checkoutOverlay')">×</button></div>
+  <div class="order-summary" id="checkoutSummary"></div><div class="qr-box" id="qrBox"></div>
+  <p style="text-align:center;color:var(--muted);font-size:13px" id="paymentCaption">请扫码付款</p>
+  <div class="errorbox" id="checkoutError"></div><div class="success" id="paySuccess">订单已经同步到云端，谢谢惠顾！</div>
+  <button class="checkout-btn" id="paidBtn" onclick="confirmPaid()">我已完成付款</button>
+  <div class="notice">当前仍由顾客点击“我已完成付款”确认，系统不会自动判断微信/支付宝是否实际到账。</div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -120,106 +113,88 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 const SUPABASE_URL="https://okgnpgamahaucmvyquzx.supabase.co";
 const SUPABASE_KEY="sb_publishable_guo63tjKVNsIplXZ5bdGuQ_Z6FdzACy";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-
-let products=[];
-let settings={name:'摊位小店',slogan:'欢迎选购喜欢的作品。',payment_caption:'请使用微信/支付宝扫码付款',qr_url:''};
-let cart=JSON.parse(localStorage.getItem('stall_cloud_cart')||'{}');
-let activeAuthor='全部';
-let pendingOrder=null;
-
+let products=[],bundleComponents=[],settings={name:'摊位小店',slogan:'欢迎选购喜欢的作品。',payment_caption:'请使用微信/支付宝扫码付款',qr_url:''};
+let cart=JSON.parse(localStorage.getItem('stall_cloud_cart')||'{}'),activeAuthor='全部',pendingOrder=null;
 function money(n){return '¥'+Number(n||0).toFixed(2)}
 function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
 function escJs(s){return String(s).replaceAll('\\','\\\\').replaceAll("'","\\'")}
 function authorEmoji(name){const a=['🎨','🧵','🌿','✨','🧸','🍀','🌙','🪄'];let s=0;for(const c of String(name))s+=c.charCodeAt(0);return a[s%a.length]}
 function saveCart(){localStorage.setItem('stall_cloud_cart',JSON.stringify(cart));updateCartCount()}
 function showError(msg){const e=document.getElementById('loadError');e.textContent=msg;e.style.display=msg?'block':'none'}
-
+function bundleText(p){
+  if(p.product_type!=='bundle')return '';
+  const comps=bundleComponents.filter(x=>x.bundle_product_id===p.id).map(x=>{const cp=products.find(z=>z.id===x.component_product_id);return cp?`${cp.name} ×${x.quantity}`:''}).filter(Boolean);
+  return comps.join(' · ');
+}
 async function loadCloudData(){
   showError('');
-  const [pRes,sRes]=await Promise.all([
-    sb.from('products').select('id,name,author,price,description,image_url,created_at').eq('is_active',true).order('created_at',{ascending:false}),
+  const [pRes,cRes,sRes]=await Promise.all([
+    sb.from('products').select('id,name,author,price,description,image_url,product_type,is_active,created_at').eq('is_active',true).order('created_at',{ascending:false}),
+    sb.from('bundle_components').select('bundle_product_id,component_product_id,quantity'),
     sb.from('shop_settings').select('name,slogan,payment_caption,qr_url').eq('id',1).maybeSingle()
   ]);
   if(pRes.error){showError('商品加载失败：'+pRes.error.message);return}
-  products=pRes.data||[];
-  if(sRes.data) settings={...settings,...sRes.data};
-  renderShop();
+  products=pRes.data||[];bundleComponents=cRes.data||[];if(sRes.data)settings={...settings,...sRes.data};renderShop();
 }
-
 function renderShop(){
-  document.getElementById('shopNameTop').textContent=settings.name||'摊位小店';
-  document.getElementById('shopNameHero').textContent=settings.name||'摊位小店';
-  document.getElementById('shopSlogan').textContent=settings.slogan||'';
+  shopNameTop.textContent=settings.name||'摊位小店';shopNameHero.textContent=settings.name||'摊位小店';shopSlogan.textContent=settings.slogan||'';
   renderFilters();renderProducts();updateCartCount();
 }
-
 function renderFilters(){
-  const authors=[...new Set(products.map(p=>p.author).filter(Boolean))];
-  if(activeAuthor!=='全部'&&!authors.includes(activeAuthor))activeAuthor='全部';
-  document.getElementById('authorFilters').innerHTML=['全部',...authors].map(a=>`<button class="chip ${a===activeAuthor?'active':''}" onclick="setAuthor('${escJs(a)}')">${esc(a)}</button>`).join('');
+  const authors=[...new Set(products.filter(p=>p.product_type!=='bundle').map(p=>p.author).filter(Boolean))];
+  if(activeAuthor!=='全部'&&activeAuthor!=='组合商品'&&!authors.includes(activeAuthor))activeAuthor='全部';
+  const labels=['全部',...authors];if(products.some(p=>p.product_type==='bundle'))labels.push('组合商品');
+  authorFilters.innerHTML=labels.map(a=>`<button class="chip ${a===activeAuthor?'active':''}" onclick="setAuthor('${escJs(a)}')">${esc(a)}</button>`).join('');
 }
 function setAuthor(a){activeAuthor=a;renderFilters();renderProducts()}
 function renderProducts(){
-  const list=products.filter(p=>activeAuthor==='全部'||p.author===activeAuthor);
-  const el=document.getElementById('productGrid');
-  if(!list.length){el.innerHTML='<div class="empty" style="grid-column:1/-1">暂时没有商品</div>';return}
-  el.innerHTML=list.map(p=>`
+  let list=products;
+  if(activeAuthor==='组合商品')list=list.filter(p=>p.product_type==='bundle');
+  else if(activeAuthor!=='全部')list=list.filter(p=>p.product_type!=='bundle'&&p.author===activeAuthor);
+  if(!list.length){productGrid.innerHTML='<div class="empty" style="grid-column:1/-1">暂时没有商品</div>';return}
+  productGrid.innerHTML=list.map(p=>`
     <article class="product">
-      ${p.image_url?`<img class="product-img" src="${esc(p.image_url)}" alt="${esc(p.name)}">`:`<div class="placeholder">${authorEmoji(p.author)}</div>`}
+      ${p.image_url?`<img class="product-img" src="${esc(p.image_url)}" alt="${esc(p.name)}">`:`<div class="placeholder">${p.product_type==='bundle'?'🎁':authorEmoji(p.author)}</div>`}
       <div class="product-body">
-        <span class="author">${esc(p.author||'未标作者')}</span>
+        <span class="author ${p.product_type==='bundle'?'bundle-tag':''}">${p.product_type==='bundle'?'组合套装':esc(p.author||'未标作者')}</span>
         <div class="product-title">${esc(p.name)}</div>
         <div class="product-desc">${esc(p.description||'')}</div>
+        ${p.product_type==='bundle'?`<div class="bundle-components">${esc(bundleText(p)||'组合内容')}</div>`:''}
         <div class="product-foot"><div class="price">${money(p.price)}</div><button class="add-btn" onclick="addToCart('${p.id}')">+</button></div>
       </div>
     </article>`).join('');
 }
 function addToCart(id){cart[id]=(cart[id]||0)+1;saveCart()}
-function updateCartCount(){document.getElementById('cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0)}
-function openCart(){renderCart();document.getElementById('cartOverlay').classList.add('show')}
+function updateCartCount(){cartCount.textContent=Object.values(cart).reduce((a,b)=>a+b,0)}
+function openCart(){renderCart();cartOverlay.classList.add('show')}
 function renderCart(){
   const lines=Object.entries(cart).map(([id,qty])=>({p:products.find(x=>x.id===id),qty})).filter(x=>x.p);
-  const el=document.getElementById('cartItems');
-  if(!lines.length)el.innerHTML='<div class="empty">购物车还是空的</div>';
-  else el.innerHTML=lines.map(({p,qty})=>`
-    <div class="cart-item">
-      ${p.image_url?`<img class="cart-thumb" src="${esc(p.image_url)}">`:`<div class="cart-thumb" style="display:grid;place-items:center;font-size:26px">${authorEmoji(p.author)}</div>`}
-      <div class="cart-main"><div class="cart-title">${esc(p.name)}</div><div class="cart-meta">${esc(p.author||'未标作者')} · ${money(p.price)}</div>
-      <div class="qty"><button onclick="changeQty('${p.id}',-1)">−</button><b>${qty}</b><button onclick="changeQty('${p.id}',1)">+</button></div></div>
-      <div class="cart-side"><b>${money(p.price*qty)}</b></div>
-    </div>`).join('');
-  document.getElementById('cartTotal').textContent=money(cartTotal());
+  cartItems.innerHTML=lines.length?lines.map(({p,qty})=>`<div class="cart-item">
+    ${p.image_url?`<img class="cart-thumb" src="${esc(p.image_url)}">`:`<div class="cart-thumb" style="display:grid;place-items:center;font-size:26px">${p.product_type==='bundle'?'🎁':authorEmoji(p.author)}</div>`}
+    <div class="cart-main"><div class="cart-title">${esc(p.name)}</div><div class="cart-meta">${p.product_type==='bundle'?'组合套装':esc(p.author)} · ${money(p.price)}</div>
+    <div class="qty"><button onclick="changeQty('${p.id}',-1)">−</button><b>${qty}</b><button onclick="changeQty('${p.id}',1)">+</button></div></div>
+    <div class="cart-side"><b>${money(p.price*qty)}</b></div></div>`).join(''):'<div class="empty">购物车还是空的</div>';
+  cartTotal.textContent=money(getCartTotal());
 }
 function changeQty(id,d){cart[id]=(cart[id]||0)+d;if(cart[id]<=0)delete cart[id];saveCart();renderCart()}
-function cartTotal(){return Object.entries(cart).reduce((s,[id,q])=>{const p=products.find(x=>x.id===id);return s+(p?Number(p.price)*q:0)},0)}
+function getCartTotal(){return Object.entries(cart).reduce((s,[id,q])=>{const p=products.find(x=>x.id===id);return s+(p?Number(p.price)*q:0)},0)}
 function openCheckout(){
-  if(cartTotal()<=0){alert('购物车还是空的');return}
+  if(getCartTotal()<=0){alert('购物车还是空的');return}
   pendingOrder=Object.entries(cart).map(([product_id,qty])=>({product_id,qty})).filter(x=>products.some(p=>p.id===x.product_id));
-  document.getElementById('checkoutSummary').innerHTML=pendingOrder.map(x=>{const p=products.find(z=>z.id===x.product_id);return `${esc(p.name)} × ${x.qty} <span style="float:right">${money(p.price*x.qty)}</span>`}).join('<br>')+
-  `<hr style="border:0;border-top:1px solid #e5e7eb;margin:8px 0"><b>合计</b><b style="float:right;color:var(--brand-dark)">${money(cartTotal())}</b>`;
-  document.getElementById('qrBox').innerHTML=settings.qr_url?`<img src="${esc(settings.qr_url)}" alt="收款二维码">`:`<div class="qr-placeholder">摊主还没有上传收款二维码</div>`;
-  document.getElementById('paymentCaption').textContent=settings.payment_caption||'请扫码付款';
-  document.getElementById('checkoutError').style.display='none';document.getElementById('paySuccess').style.display='none';
-  const b=document.getElementById('paidBtn');b.disabled=false;b.textContent='我已完成付款';
-  closeOverlay('cartOverlay');document.getElementById('checkoutOverlay').classList.add('show');
+  checkoutSummary.innerHTML=pendingOrder.map(x=>{const p=products.find(z=>z.id===x.product_id);return `${esc(p.name)} × ${x.qty} <span style="float:right">${money(p.price*x.qty)}</span>`}).join('<br>')+
+    `<hr style="border:0;border-top:1px solid #e5e7eb;margin:8px 0"><b>合计</b><b style="float:right;color:var(--brand-dark)">${money(getCartTotal())}</b>`;
+  qrBox.innerHTML=settings.qr_url?`<img src="${esc(settings.qr_url)}" alt="收款二维码">`:`<div class="qr-placeholder">摊主还没有上传收款二维码</div>`;
+  paymentCaption.textContent=settings.payment_caption||'请扫码付款';checkoutError.style.display='none';paySuccess.style.display='none';paidBtn.disabled=false;paidBtn.textContent='我已完成付款';
+  closeOverlay('cartOverlay');checkoutOverlay.classList.add('show');
 }
 async function confirmPaid(){
-  if(!pendingOrder?.length)return;
-  const b=document.getElementById('paidBtn'),err=document.getElementById('checkoutError');
-  b.disabled=true;b.textContent='正在记录订单…';err.style.display='none';
-  const {data,error}=await sb.rpc('create_shop_order',{items_json:pendingOrder});
-  if(error){err.textContent='订单记录失败：'+error.message;err.style.display='block';b.disabled=false;b.textContent='重新提交';return}
-  cart={};saveCart();pendingOrder=null;
-  document.getElementById('paySuccess').style.display='block';b.textContent='订单已记录';
+  if(!pendingOrder?.length)return;paidBtn.disabled=true;paidBtn.textContent='正在记录订单…';checkoutError.style.display='none';
+  const {error}=await sb.rpc('create_shop_order',{items_json:pendingOrder});
+  if(error){checkoutError.textContent='订单记录失败：'+error.message;checkoutError.style.display='block';paidBtn.disabled=false;paidBtn.textContent='重新提交';return}
+  cart={};saveCart();pendingOrder=null;paySuccess.style.display='block';paidBtn.textContent='订单已记录';
 }
-function closeOverlay(id){document.getElementById(id).classList.remove('show')}
-function overlayClose(e,id){if(e.target.id===id)closeOverlay(id)}
-
+function closeOverlay(id){document.getElementById(id).classList.remove('show')}function overlayClose(e,id){if(e.target.id===id)closeOverlay(id)}
 loadCloudData();
-sb.channel('shop-public-sync')
- .on('postgres_changes',{event:'*',schema:'public',table:'products'},()=>loadCloudData())
- .on('postgres_changes',{event:'*',schema:'public',table:'shop_settings'},()=>loadCloudData())
- .subscribe();
+sb.channel('shop-public-sync-v5').on('postgres_changes',{event:'*',schema:'public',table:'products'},()=>loadCloudData()).on('postgres_changes',{event:'*',schema:'public',table:'bundle_components'},()=>loadCloudData()).on('postgres_changes',{event:'*',schema:'public',table:'shop_settings'},()=>loadCloudData()).subscribe();
 </script>
-</body>
-</html>
+</body></html>
