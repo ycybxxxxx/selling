@@ -213,22 +213,29 @@ function setTag(t){activeTag=t;renderTagFilters();renderProducts()}
 function availableStock(p){
   if(!p)return 0;
   if(p.product_type!=='bundle')return p.stock_qty==null?null:Number(p.stock_qty);
+
+  const limits=[];
+  if(p.stock_qty!=null)limits.push(Math.max(0,Number(p.stock_qty)));
+
   const comps=bundleComponents.filter(x=>x.bundle_product_id===p.id);
   if(!comps.length)return 0;
-  let limits=[];
+
   for(const c of comps){
     const cp=products.find(x=>x.id===c.component_product_id);
     if(!cp)return 0;
-    if(cp.stock_qty!=null)limits.push(Math.floor(Number(cp.stock_qty)/Number(c.quantity||1)));
+    if(cp.stock_qty!=null){
+      limits.push(Math.floor(Number(cp.stock_qty)/Math.max(1,Number(c.quantity||1))));
+    }
   }
   return limits.length?Math.max(0,Math.min(...limits)):null;
 }
 function stockText(p){
   const s=availableStock(p);
   if(s==null)return '';
+  const unit=p.product_type==='bundle'?'套':'件';
   if(s<=0)return '<div class="stock-note out">已售罄</div>';
-  if(s<=3)return `<div class="stock-note low">仅剩 ${s} 件</div>`;
-  return `<div class="stock-note">库存 ${s}</div>`;
+  if(s<=3)return `<div class="stock-note low">仅剩 ${s} ${unit}</div>`;
+  return `<div class="stock-note">库存 ${s} ${unit}</div>`;
 }
 function effectiveCartLimit(p){
   const vals=[];
